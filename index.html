@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log de sondage — Diagnostic pollution des sols</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f3f2ec;
+    --card:#fbfbf7;
+    --ink:#1e201d;
+    --ink-soft:#4a4d46;
+    --line:#d6d4c8;
+    --line-strong:#b7b5a6;
+    --slate:#2f3d45;
+    --accent:#2e6b74;
+    --accent-soft:#e2edee;
+    --flag:#a8620a;
+    --flag-soft:#f4e6d2;
+    --sans:"Space Grotesk",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--sans);
+    color:var(--ink);
+    background:var(--paper);
+    font-size:14px;
+    line-height:1.45;
+  }
+  /* ---------- top bar ---------- */
+  .app-nav{
+    position:sticky;top:0;z-index:20;
+    display:flex;align-items:center;gap:16px;
+    padding:12px 20px;
+    background:var(--slate);color:#eef1ee;
+    border-bottom:3px solid var(--accent);
+  }
+  .app-nav h1{
+    font-size:15px;font-weight:600;letter-spacing:.02em;margin:0;
+    display:flex;flex-direction:column;line-height:1.15;
+  }
+  .app-nav h1 span{font-size:10.5px;font-weight:400;color:#a9bcc0;letter-spacing:.08em;text-transform:uppercase}
+  .nav-spacer{flex:1}
+  .btn{
+    font-family:var(--sans);font-size:12.5px;font-weight:500;
+    border:1px solid transparent;border-radius:6px;
+    padding:7px 13px;cursor:pointer;background:#42535c;color:#eef1ee;
+    transition:background .15s,border-color .15s;
+  }
+  .btn:hover{background:#4d616b}
+  .btn:focus-visible{outline:2px solid #eef1ee;outline-offset:2px}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.primary:hover{background:#357e88}
+  .btn.ghost{background:transparent;border-color:#5c6d76}
+  .btn.ghost:hover{background:#3a4a53}
+
+  /* ---------- layout ---------- */
+  .wrap{display:grid;grid-template-columns:minmax(360px,440px) 1fr;gap:0;align-items:start}
+  .panel-input{padding:18px 20px 60px;border-right:1px solid var(--line-strong);min-height:calc(100vh - 56px)}
+  .panel-preview{padding:22px;background:#e8e7df;min-height:calc(100vh - 56px)}
+
+  .section{margin-bottom:22px}
+  .section-title{
+    font-size:11px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 10px;padding-bottom:6px;
+    border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;
+  }
+  .section-title .n{
+    font-family:var(--mono);font-size:10px;color:#fff;background:var(--accent);
+    border-radius:3px;padding:1px 5px;font-weight:700;
+  }
+
+  /* ---------- fields ---------- */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px 11px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px 11px}
+  .field{display:flex;flex-direction:column;gap:3px}
+  .field.wide{grid-column:1/-1}
+  label{font-size:10.5px;font-weight:500;letter-spacing:.02em;color:var(--ink-soft)}
+  input,select,textarea{
+    font-family:var(--mono);font-size:12.5px;color:var(--ink);
+    background:var(--card);border:1px solid var(--line-strong);border-radius:5px;
+    padding:6px 8px;width:100%;
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+  textarea{resize:vertical;min-height:38px;line-height:1.4}
+  select{font-family:var(--sans)}
+
+  /* ---------- layer / sample rows ---------- */
+  .rows{display:flex;flex-direction:column;gap:10px}
+  .row-card{
+    background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:6px;padding:10px 10px 11px;position:relative;
+  }
+  .row-card .row-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .row-card .row-idx{font-family:var(--mono);font-size:10px;font-weight:700;color:#fff;background:var(--slate);border-radius:3px;padding:2px 6px}
+  .row-card .swatch{width:22px;height:16px;border:1px solid var(--line-strong);border-radius:2px;flex:none}
+  .row-card .row-litho{font-weight:600;font-size:12.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .del{
+    border:none;background:none;color:#b23b3b;cursor:pointer;font-size:15px;line-height:1;
+    padding:2px 5px;border-radius:4px;
+  }
+  .del:hover{background:#f4dede}
+  .depth-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .obs-line{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .add-btn{
+    width:100%;border:1.5px dashed var(--line-strong);background:transparent;color:var(--ink-soft);
+    padding:9px;border-radius:6px;cursor:pointer;font-family:var(--sans);font-size:12.5px;font-weight:500;
+  }
+  .add-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+  .hint{font-size:10.5px;color:var(--ink-soft);margin:6px 0 0}
+
+  .scale-row{display:flex;align-items:center;gap:10px}
+  .scale-row input[type=range]{flex:1;accent-color:var(--accent)}
+  .scale-val{font-family:var(--mono);font-size:11px;color:var(--ink-soft);min-width:62px;text-align:right}
+
+  /* ---------- sheet ---------- */
+  .sheet-scroll{overflow:auto}
+  .sheet{
+    background:#fff;margin:0 auto;width:794px;max-width:100%;
+    box-shadow:0 2px 14px rgba(0,0,0,.14);border:1px solid #ccc;
+    padding:26px 30px 34px;
+  }
+  .sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;border-bottom:2px solid var(--slate);padding-bottom:12px;margin-bottom:14px}
+  .sheet-title{font-size:16px;font-weight:700;letter-spacing:.01em;margin:0;color:var(--slate)}
+  .sheet-title small{display:block;font-size:10px;font-weight:500;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);margin-bottom:3px}
+  .sheet-ref{text-align:right;font-family:var(--mono)}
+  .sheet-ref .big{font-size:19px;font-weight:700;color:var(--slate)}
+  .sheet-ref .sub{font-size:10.5px;color:var(--ink-soft)}
+  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:7px 16px;margin-bottom:16px}
+  .meta div{font-size:11px}
+  .meta .k{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);display:block}
+  .meta .v{font-family:var(--mono);font-size:12px;color:var(--ink)}
+  .log-svg{width:100%;display:block}
+  .legend{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+  .legend h3{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 8px}
+  .legend-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px 14px}
+  .legend-item{display:flex;align-items:center;gap:7px;font-size:10.5px}
+  .legend-item .sw{width:26px;height:15px;border:1px solid var(--line-strong);flex:none}
+  .empty-note{color:var(--ink-soft);font-style:italic;font-size:12px;text-align:center;padding:26px 0}
+
+  @media (max-width:880px){
+    .wrap{grid-template-columns:1fr}
+    .panel-input{border-right:none;border-bottom:1px solid var(--line-strong);min-height:0}
+    .panel-preview{min-height:0}
+    .grid3{grid-template-columns:1fr 1fr}
+  }
+  @media print{
+    .app-nav,.panel-input{display:none!important}
+    .wrap{display:block}
+    .panel-preview{padding:0;background:#fff;min-height:0}
+    .sheet-scroll{overflow:visible}
+    .sheet{box-shadow:none;border:none;width:100%;padding:0}
+    @page{size:A4 portrait;margin:14mm}
+  }
+</style>
+</head>
+<body>
+
+<!-- geological figurés (SVG pattern defs) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="litho-defs"></defs></svg>
+
+<nav class="app-nav">
+  <h1><span>Diagnostic pollution des sols</span>Log de sondage</h1>
+  <div class="nav-spacer"></div>
+  <button class="btn ghost" id="btn-example">Exemple</button>
+  <button class="btn ghost" id="btn-import">Importer</button>
+  <button class="btn ghost" id="btn-export">Exporter</button>
+  <button class="btn primary" id="btn-print">Imprimer / PDF</button>
+  <input type="file" id="file-import" accept="application/json" style="display:none">
+</nav>
+
+<div class="wrap">
+  <!-- ============ SAISIE ============ -->
+  <div class="panel-input">
+
+    <div class="section">
+      <p class="section-title"><span class="n">1</span>Fiche du sondage</p>
+      <div class="grid2">
+        <div class="field wide"><label>Site / affaire</label><input id="f-site" placeholder="Ancienne station-service, Tarbes"></div>
+        <div class="field"><label>Référence sondage</label><input id="f-ref" placeholder="PZ1"></div>
+        <div class="field"><label>Date</label><input id="f-date" type="date"></div>
+        <div class="field"><label>Méthode de forage</label><input id="f-methode" placeholder="Tarière Ø63 mm"></div>
+        <div class="field"><label>Opérateur / foreur</label><input id="f-operateur" placeholder=""></div>
+        <div class="field"><label>X (coord.)</label><input id="f-x" placeholder=""></div>
+        <div class="field"><label>Y (coord.)</label><input id="f-y" placeholder=""></div>
+        <div class="field"><label>Z sol (m NGF)</label><input id="f-z" placeholder=""></div>
+        <div class="field"><label>Prof. totale (m)</label><input id="f-prof" type="number" step="0.1" value="8" min="0.1"></div>
+        <div class="field"><label>Niveau d'eau (m)</label><input id="f-eau" type="number" step="0.1" placeholder="ex : 3.2"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <p class="section-title"><span class="n">2</span>Couches géologiques</p>
+      <div class="rows" id="layers"></div>
+      <button class="add-btn" id="add-layer">+ Ajouter une couche</button>
+      <p class="hint">Profondeurs en mètres depuis le sol (« de » = toit, « à » = mur). Le figuré et la teinte suivent la nomenclature géologique classique.</p>
+    </div>
+
+    <div class="section">
+      <p class="section-title"><span class="n">3</span>Échantillons</p>
+      <div class="rows" id="samples"></div>
+      <button class="add-btn" id="add-sample">+ Ajouter un échantillon</button>
+    </div>
+
+    <div class="section">
+      <p class="section-title"><span class="n">4</span>Échelle du log</p>
+      <div class="scale-row">
+        <input type="range" id="f-scale" min="20" max="90" step="5" value="45">
+        <span class="scale-val" id="scale-val">45 px/m</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ APERÇU ============ -->
+  <div class="panel-preview">
+    <div class="sheet-scroll">
+      <div class="sheet" id="sheet"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==================================================================
+   1. Lithologies : code, libellé, teinte, figuré (SVG pattern)
+   Figurés d'après la convention géologique classique (type BRGM) :
+   argile = tirets horizontaux · sable/grès = pointillés ·
+   grave/cailloutis = ronds · calcaire/marne = briques ·
+   argilite/schiste = traits obliques · remblais = mixte.
+   ================================================================== */
+const INK = "#2a2a26";
+const LITHOS = [
+  {code:"terre_vegetale", label:"Terre végétale", tint:"#cabf9e", fig:'<path d="M2 14 v-5 M6 15 v-6 M10 13 v-5 M14 15 v-6 M4 5 l1.5 -3 M9 4 l1.5 -3 M13 5 l1.5 -3" stroke="'+INK+'" stroke-width="1" fill="none" stroke-linecap="round"/>'},
+  {code:"remblais", label:"Remblais anthropiques", tint:"#d7d7cf", fig:'<path d="M3 13 l3 -5 l3 5 z" fill="none" stroke="'+INK+'" stroke-width="1"/><circle cx="12" cy="5" r="1.1" fill="'+INK+'"/><circle cx="14" cy="12" r="1.1" fill="'+INK+'"/><rect x="9" y="9" width="3" height="3" fill="none" stroke="'+INK+'" stroke-width="0.8"/>'},
+  {code:"argile", label:"Argile", tint:"#c7d0af", fig:'<path d="M1 4 h6 M9 4 h6 M1 9 h6 M9 9 h6 M1 14 h6 M9 14 h6" stroke="'+INK+'" stroke-width="1" stroke-linecap="round"/>'},
+  {code:"argile_limoneuse", label:"Argile limoneuse", tint:"#d0d2ad", fig:'<path d="M1 5 h6 M9 5 h6 M1 12 h6 M9 12 h6" stroke="'+INK+'" stroke-width="1" stroke-linecap="round"/><circle cx="4" cy="9" r="0.7" fill="'+INK+'"/><circle cx="12" cy="9" r="0.7" fill="'+INK+'"/>'},
+  {code:"limon", label:"Limon", tint:"#e2d6ad", fig:'<path d="M1 5 h4 M8 8 h4 M2 12 h4 M11 4 h4 M11 13 h4" stroke="'+INK+'" stroke-width="0.8" stroke-linecap="round" opacity="0.85"/>'},
+  {code:"sable", label:"Sable", tint:"#efe3ba", fig:'<circle cx="4" cy="4" r="1" fill="'+INK+'"/><circle cx="12" cy="4" r="1" fill="'+INK+'"/><circle cx="8" cy="8" r="1" fill="'+INK+'"/><circle cx="4" cy="12" r="1" fill="'+INK+'"/><circle cx="12" cy="12" r="1" fill="'+INK+'"/>'},
+  {code:"sable_grave", label:"Sable graveleux", tint:"#e9deb6", fig:'<circle cx="4" cy="4" r="0.9" fill="'+INK+'"/><circle cx="12" cy="12" r="0.9" fill="'+INK+'"/><ellipse cx="11" cy="4" rx="2.4" ry="1.5" fill="none" stroke="'+INK+'" stroke-width="0.9"/><ellipse cx="5" cy="12" rx="2.4" ry="1.5" fill="none" stroke="'+INK+'" stroke-width="0.9"/>'},
+  {code:"grave", label:"Grave / graviers", tint:"#e2d5bd", fig:'<ellipse cx="5" cy="5" rx="2.6" ry="1.7" fill="none" stroke="'+INK+'" stroke-width="1"/><ellipse cx="12" cy="10" rx="2.6" ry="1.7" fill="none" stroke="'+INK+'" stroke-width="1"/><ellipse cx="4" cy="13" rx="2" ry="1.4" fill="none" stroke="'+INK+'" stroke-width="1"/>'},
+  {code:"cailloutis", label:"Cailloutis / galets", tint:"#dacbb1", fig:'<circle cx="6" cy="6" r="3.4" fill="none" stroke="'+INK+'" stroke-width="1.1"/><circle cx="14" cy="13" r="3" fill="none" stroke="'+INK+'" stroke-width="1.1"/><circle cx="14" cy="4" r="2" fill="none" stroke="'+INK+'" stroke-width="1"/>'},
+  {code:"marne", label:"Marne", tint:"#d1d4c5", fig:'<path d="M0 5 h16 M0 11 h16 M4 5 v6 M12 5 v6 M8 0 v5 M8 11 v5" stroke="'+INK+'" stroke-width="0.8"/><path d="M1 8 h2 M9 8 h2" stroke="'+INK+'" stroke-width="0.8"/>'},
+  {code:"calcaire", label:"Calcaire", tint:"#e7e7de", fig:'<path d="M0 5 h16 M0 11 h16 M4 5 v6 M12 5 v6 M8 0 v5 M8 11 v5" stroke="'+INK+'" stroke-width="0.9" fill="none"/>'},
+  {code:"gres", label:"Grès", tint:"#e8ddc2", fig:'<path d="M0 8 h16 M8 0 v16" stroke="'+INK+'" stroke-width="0.5" opacity="0.5"/><circle cx="4" cy="4" r="0.9" fill="'+INK+'"/><circle cx="12" cy="4" r="0.9" fill="'+INK+'"/><circle cx="4" cy="12" r="0.9" fill="'+INK+'"/><circle cx="12" cy="12" r="0.9" fill="'+INK+'"/>'},
+  {code:"argilite", label:"Argilite / schiste", tint:"#c5cabf", fig:'<path d="M-2 6 l6 -6 M2 10 l8 -8 M6 14 l10 -10 M12 16 l6 -6" stroke="'+INK+'" stroke-width="0.9"/>'},
+  {code:"substratum", label:"Substratum indifférencié", tint:"#cecec4", fig:'<path d="M0 0 l16 16 M16 0 l-16 16" stroke="'+INK+'" stroke-width="0.7" opacity="0.75"/>'}
+];
+const LITHO_MAP = Object.fromEntries(LITHOS.map(l=>[l.code,l]));
+
+/* build <pattern> defs */
+(function buildDefs(){
+  const defs = document.getElementById("litho-defs");
+  let s="";
+  for(const l of LITHOS){
+    s += '<pattern id="pat-'+l.code+'" width="16" height="16" patternUnits="userSpaceOnUse">'
+       + '<rect width="16" height="16" fill="'+l.tint+'"/>'+l.fig+'</pattern>';
+  }
+  defs.innerHTML = s;
+})();
+
+/* small swatch (for the form + legend) */
+function swatchSVG(code,w,h){
+  return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'
+    +'<rect width="'+w+'" height="'+h+'" fill="url(#pat-'+code+')"/></svg>';
+}
+
+/* ==================================================================
+   2. État
+   ================================================================== */
+let state = {
+  header:{site:"",ref:"",date:"",methode:"",operateur:"",x:"",y:"",z:"",prof:8,eau:""},
+  layers:[],
+  samples:[],
+  scale:45
+};
+
+/* ==================================================================
+   3. Rendu du formulaire (couches / échantillons)
+   ================================================================== */
+const layersEl = document.getElementById("layers");
+const samplesEl = document.getElementById("samples");
+
+function lithoOptions(sel){
+  return LITHOS.map(l=>'<option value="'+l.code+'"'+(l.code===sel?' selected':'')+'>'+l.label+'</option>').join("");
+}
+
+function renderLayerForm(){
+  layersEl.innerHTML = "";
+  state.layers.forEach((ly,i)=>{
+    const l = LITHO_MAP[ly.litho]||LITHOS[0];
+    const c = document.createElement("div");
+    c.className="row-card";
+    c.innerHTML =
+      '<div class="row-head">'
+      + '<span class="row-idx">C'+(i+1)+'</span>'
+      + '<span class="swatch">'+swatchSVG(ly.litho,22,16)+'</span>'
+      + '<span class="row-litho">'+l.label+'</span>'
+      + '<button class="del" title="Supprimer" data-del-layer="'+i+'">✕</button>'
+      + '</div>'
+      + '<div class="depth-pair">'
+      +   '<div class="field"><label>De (m)</label><input type="number" step="0.05" min="0" value="'+ly.de+'" data-k="de" data-i="'+i+'"></div>'
+      +   '<div class="field"><label>À (m)</label><input type="number" step="0.05" min="0" value="'+ly.a+'" data-k="a" data-i="'+i+'"></div>'
+      + '</div>'
+      + '<div class="field" style="margin-top:8px"><label>Lithologie</label><select data-k="litho" data-i="'+i+'">'+lithoOptions(ly.litho)+'</select></div>'
+      + '<div class="field" style="margin-top:8px"><label>Description</label><textarea data-k="description" data-i="'+i+'" placeholder="Ex : argile brune plastique, traces d\'oxydation">'+ly.description+'</textarea></div>'
+      + '<div class="obs-line">'
+      +   '<div class="field"><label>PID (ppm)</label><input type="number" step="1" min="0" value="'+ly.pid+'" data-k="pid" data-i="'+i+'" placeholder=""></div>'
+      +   '<div class="field"><label>Indice organoleptique</label><input value="'+ly.obs+'" data-k="obs" data-i="'+i+'" placeholder="odeur HC, taches..."></div>'
+      + '</div>';
+    layersEl.appendChild(c);
+  });
+}
+
+function renderSampleForm(){
+  samplesEl.innerHTML = "";
+  state.samples.forEach((sp,i)=>{
+    const c=document.createElement("div");
+    c.className="row-card";
+    c.style.borderLeftColor="var(--flag)";
+    c.innerHTML =
+      '<div class="row-head">'
+      + '<span class="row-idx" style="background:var(--flag)">E'+(i+1)+'</span>'
+      + '<span class="row-litho">'+(sp.ref||"Échantillon")+'</span>'
+      + '<button class="del" title="Supprimer" data-del-sample="'+i+'">✕</button>'
+      + '</div>'
+      + '<div class="grid3">'
+      +   '<div class="field"><label>Prof. (m)</label><input type="number" step="0.05" min="0" value="'+sp.prof+'" data-sk="prof" data-i="'+i+'"></div>'
+      +   '<div class="field"><label>Référence</label><input value="'+sp.ref+'" data-sk="ref" data-i="'+i+'" placeholder="'+(sp.ref||'')+'"></div>'
+      +   '<div class="field"><label>Type</label><select data-sk="type" data-i="'+i+'">'
+      +      ['Sol','Eau','Gaz du sol'].map(t=>'<option'+(t===sp.type?' selected':'')+'>'+t+'</option>').join("")
+      +   '</select></div>'
+      + '</div>';
+    samplesEl.appendChild(c);
+  });
+}
+
+/* ==================================================================
+   4. Rendu du LOG (SVG)
+   ================================================================== */
+function wrapText(txt,maxChars){
+  const words=(txt||"").split(/\s+/).filter(Boolean);
+  const lines=[];let cur="";
+  for(const w of words){
+    if((cur+" "+w).trim().length<=maxChars){cur=(cur+" "+w).trim();}
+    else{if(cur)lines.push(cur);cur=w.length>maxChars?w.slice(0,maxChars-1)+"…":w;}
+  }
+  if(cur)lines.push(cur);
+  return lines;
+}
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+function renderLog(){
+  const sheet=document.getElementById("sheet");
+  const h=state.header;
+  const prof=Math.max(parseFloat(h.prof)||0,0.1);
+  const scale=state.scale;               // px / mètre
+  // colonnes (x)
+  const M={l:8,t:6};
+  const xAxis=M.l, wAxis=40;
+  const xLith=xAxis+wAxis, wLith=78;
+  const xDesc=xLith+wLith, wDesc=250;
+  const xObs=xDesc+wDesc, wObs=110;
+  const xSamp=xObs+wObs, wSamp=70;
+  const totalW=xSamp+wSamp+M.l;
+  const headBand=26;
+  const top=M.t+headBand;
+  const logH=prof*scale;
+  const totalH=top+logH+18;
+
+  const y=d=>top+d*scale;               // profondeur (m) -> y px
+
+  let g="";
+  // en-têtes de colonnes
+  g+='<rect x="'+xAxis+'" y="'+M.t+'" width="'+(totalW-2*M.l)+'" height="'+headBand+'" fill="#2f3d45"/>';
+  const heads=[["Prof.\n(m)",xAxis,wAxis],["Litho.",xLith,wLith],["Description",xDesc,wDesc],["Observations",xObs,wObs],["Échant.",xSamp,wSamp]];
+  for(const[t,x,w] of heads){
+    g+='<text x="'+(x+w/2)+'" y="'+(M.t+headBand/2+3.5)+'" fill="#eef1ee" font-size="9.5" font-family="Space Grotesk,sans-serif" font-weight="600" text-anchor="middle">'+esc(t.replace("\n"," "))+'</text>';
+  }
+  // cadre colonnes
+  for(const x of [xLith,xDesc,xObs,xSamp,xSamp+wSamp]){
+    g+='<line x1="'+x+'" y1="'+top+'" x2="'+x+'" y2="'+(top+logH)+'" stroke="#b7b5a6" stroke-width="0.8"/>';
+  }
+  g+='<rect x="'+xAxis+'" y="'+top+'" width="'+(totalW-2*M.l)+'" height="'+logH+'" fill="none" stroke="#2f3d45" stroke-width="1"/>';
+
+  // graduations de profondeur
+  const majTick = scale>=55?0.5:1;
+  for(let d=0;d<=prof+1e-9;d+=majTick){
+    const yy=y(d);
+    g+='<line x1="'+(xAxis+wAxis-5)+'" y1="'+yy+'" x2="'+xAxis+wAxis+'" y2="'+yy+'" stroke="#2f3d45" stroke-width="0.8"/>';
+    g+='<text x="'+(xAxis+wAxis-7)+'" y="'+(yy+3)+'" fill="#4a4d46" font-size="8.5" font-family="JetBrains Mono,monospace" text-anchor="end">'+(Math.round(d*100)/100)+'</text>';
+    if(d>0)g+='<line x1="'+xLith+'" y1="'+yy+'" x2="'+(xSamp+wSamp)+'" y2="'+yy+'" stroke="#e6e5dc" stroke-width="0.5"/>';
+  }
+
+  // couches
+  const sorted=[...state.layers].map((l,idx)=>({...l,idx})).sort((a,b)=>(parseFloat(a.de)||0)-(parseFloat(b.de)||0));
+  for(const ly of sorted){
+    const de=parseFloat(ly.de)||0, a=parseFloat(ly.a)||0;
+    if(a<=de)continue;
+    const y0=y(de), y1=y(a), hh=y1-y0;
+    // figuré
+    g+='<rect x="'+xLith+'" y="'+y0+'" width="'+wLith+'" height="'+hh+'" fill="url(#pat-'+ly.litho+')"/>';
+    g+='<line x1="'+xLith+'" y1="'+y1+'" x2="'+(xSamp+wSamp)+'" y2="'+y1+'" stroke="#2f3d45" stroke-width="0.9"/>';
+    // description
+    const lith=LITHO_MAP[ly.litho]||LITHOS[0];
+    const descTxt=(lith.label+(ly.description?" — "+ly.description:""));
+    const lines=wrapText(descTxt,52);
+    const maxLines=Math.max(1,Math.floor((hh-4)/10));
+    let ty=y0+11;
+    lines.slice(0,maxLines).forEach((ln,k)=>{
+      const isLast=k===maxLines-1 && lines.length>maxLines;
+      g+='<text x="'+(xDesc+6)+'" y="'+ty+'" fill="#1e201d" font-size="9" font-family="Space Grotesk,sans-serif"'+(k===0?' font-weight="600"':'')+'>'+esc(isLast?ln+" …":ln)+'</text>';
+      ty+=10;
+    });
+    // observations pollution
+    const flagged=(parseFloat(ly.pid)>0)||(ly.obs&&ly.obs.trim());
+    let oy=y0+11;
+    if(ly.pid!==""&&ly.pid!=null){
+      g+='<text x="'+(xObs+6)+'" y="'+oy+'" fill="#1e201d" font-size="8.5" font-family="JetBrains Mono,monospace">PID '+esc(ly.pid)+' ppm</text>';oy+=11;
+    }
+    if(ly.obs&&ly.obs.trim()){
+      wrapText(ly.obs,17).slice(0,Math.max(1,Math.floor((hh-14)/9))).forEach(ln=>{
+        g+='<text x="'+(xObs+6)+'" y="'+oy+'" fill="#a8620a" font-size="8" font-family="Space Grotesk,sans-serif">'+esc(ln)+'</text>';oy+=9;
+      });
+    }
+    if(flagged){g+='<circle cx="'+(xObs+wObs-8)+'" cy="'+(y0+8)+'" r="3" fill="#a8620a"/>';}
+  }
+
+  // niveau d'eau
+  const eau=parseFloat(h.eau);
+  if(!isNaN(eau)&&eau>=0&&eau<=prof){
+    const ye=y(eau);
+    g+='<line x1="'+xLith+'" y1="'+ye+'" x2="'+(xLith+wLith)+'" y2="'+ye+'" stroke="#2e6b74" stroke-width="1.4"/>';
+    const mx=xLith+wLith/2;
+    g+='<path d="M'+(mx-5)+' '+(ye+1)+' h10 l-5 6 z" fill="#2e6b74"/>';
+    g+='<text x="'+(xLith+wLith+3)+'" y="'+(ye-2)+'" fill="#2e6b74" font-size="8" font-family="JetBrains Mono,monospace">eau '+eau+' m</text>';
+  }
+
+  // échantillons
+  for(const sp of state.samples){
+    const d=parseFloat(sp.prof);if(isNaN(d)||d<0||d>prof)continue;
+    const yy=y(d), mx=xSamp+14;
+    g+='<path d="M'+mx+' '+(yy-4)+' l5 8 h-10 z" fill="#a8620a"/>';
+    g+='<line x1="'+xSamp+'" y1="'+yy+'" x2="'+(xSamp+6)+'" y2="'+yy+'" stroke="#a8620a" stroke-width="1"/>';
+    g+='<text x="'+(mx+9)+'" y="'+(yy+3)+'" fill="#1e201d" font-size="8" font-family="JetBrains Mono,monospace">'+esc(sp.ref||"")+'</text>';
+  }
+
+  const svg='<svg class="log-svg" viewBox="0 0 '+totalW+' '+totalH+'" xmlns="http://www.w3.org/2000/svg" font-family="Space Grotesk,sans-serif">'+g+'</svg>';
+
+  // légende des figurés réellement utilisés
+  const usedCodes=[...new Set(state.layers.map(l=>l.litho))];
+  let legend="";
+  if(usedCodes.length){
+    legend='<div class="legend"><h3>Figurés employés</h3><div class="legend-grid">'
+      + usedCodes.map(code=>{const l=LITHO_MAP[code];return '<div class="legend-item"><span class="sw">'+swatchSVG(code,26,15)+'</span>'+esc(l.label)+'</div>';}).join("")
+      + '</div></div>';
+  }
+
+  // méta
+  const metaFields=[["Site",h.site],["Réf. sondage",h.ref],["Date",h.date],["Méthode",h.methode],
+    ["X / Y",(h.x||h.y)?(esc(h.x)+" / "+esc(h.y)):""],["Z sol",h.z?h.z+" m NGF":""],
+    ["Prof. totale",prof+" m"],["Niveau d'eau",(h.eau!==""&&h.eau!=null)?h.eau+" m":"—"]];
+  const meta=metaFields.map(([k,v])=>'<div><span class="k">'+k+'</span><span class="v">'+(esc(v)||"—")+'</span></div>').join("");
+
+  const bodyLog = state.layers.length
+    ? svg+legend
+    : '<div class="empty-note">Ajoutez au moins une couche pour dessiner le log.</div>';
+
+  sheet.innerHTML =
+    '<div class="sheet-head">'
+    + '<h1 class="sheet-title"><small>Log de sondage · diagnostic pollution des sols</small>'+(esc(h.site)||"Sondage")+'</h1>'
+    + '<div class="sheet-ref"><div class="big">'+(esc(h.ref)||"—")+'</div><div class="sub">'+(esc(h.date)||"")+'</div></div>'
+    + '</div>'
+    + '<div class="meta">'+meta+'</div>'
+    + bodyLog;
+}
+
+/* ==================================================================
+   5. Rendu global + liaisons
+   ================================================================== */
+function renderAll(){renderLayerForm();renderSampleForm();renderLog();}
+
+/* -- champs d'en-tête -- */
+const headerMap={"f-site":"site","f-ref":"ref","f-date":"date","f-methode":"methode","f-operateur":"operateur","f-x":"x","f-y":"y","f-z":"z","f-prof":"prof","f-eau":"eau"};
+for(const[id,key] of Object.entries(headerMap)){
+  const el=document.getElementById(id);
+  el.addEventListener("input",()=>{state.header[key]=el.value;renderLog();});
+}
+
+/* -- échelle -- */
+const scaleEl=document.getElementById("f-scale"),scaleVal=document.getElementById("scale-val");
+scaleEl.addEventListener("input",()=>{state.scale=parseInt(scaleEl.value);scaleVal.textContent=scaleEl.value+" px/m";renderLog();});
+
+/* -- couches : délégation -- */
+layersEl.addEventListener("input",e=>{
+  const t=e.target,i=+t.dataset.i,k=t.dataset.k;
+  if(i>=0&&k){state.layers[i][k]=t.value;
+    if(k==="litho"){renderLayerForm();} // maj swatch + libellé
+    renderLog();}
+});
+layersEl.addEventListener("click",e=>{
+  const b=e.target.closest("[data-del-layer]");if(!b)return;
+  state.layers.splice(+b.dataset.delLayer,1);renderAll();
+});
+document.getElementById("add-layer").addEventListener("click",()=>{
+  const last=state.layers[state.layers.length-1];
+  const de=last?parseFloat(last.a)||0:0;
+  state.layers.push({de:de,a:de+1,litho:"argile",description:"",pid:"",obs:""});
+  renderAll();
+});
+
+/* -- échantillons : délégation -- */
+samplesEl.addEventListener("input",e=>{
+  const t=e.target,i=+t.dataset.i,k=t.dataset.sk;
+  if(i>=0&&k){state.samples[i][k]=t.value;if(k==="ref"){renderSampleForm();}renderLog();}
+});
+samplesEl.addEventListener("click",e=>{
+  const b=e.target.closest("[data-del-sample]");if(!b)return;
+  state.samples.splice(+b.dataset.delSample,1);renderAll();
+});
+document.getElementById("add-sample").addEventListener("click",()=>{
+  state.samples.push({prof:1,ref:"Ech"+(state.samples.length+1),type:"Sol"});
+  renderAll();
+});
+
+/* -- barre d'outils -- */
+document.getElementById("btn-print").addEventListener("click",()=>window.print());
+document.getElementById("btn-export").addEventListener("click",()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download=(state.header.ref||"log")+".json";a.click();URL.revokeObjectURL(a.href);
+});
+document.getElementById("btn-import").addEventListener("click",()=>document.getElementById("file-import").click());
+document.getElementById("file-import").addEventListener("change",e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);
+    state=Object.assign({header:{},layers:[],samples:[],scale:45},d);
+    syncHeaderInputs();renderAll();}catch(err){alert("Fichier illisible : "+err.message);}};
+  r.readAsText(f);e.target.value="";
+});
+
+function syncHeaderInputs(){
+  for(const[id,key] of Object.entries(headerMap)){document.getElementById(id).value=state.header[key]??"";}
+  scaleEl.value=state.scale;scaleVal.textContent=state.scale+" px/m";
+}
+
+/* -- jeu d'exemple -- */
+document.getElementById("btn-example").addEventListener("click",()=>{
+  state={
+    header:{site:"Ancienne station-service — Tarbes (65)",ref:"PZ1",date:new Date().toISOString().slice(0,10),
+      methode:"Tarière hélicoïdale Ø63 mm",operateur:"",x:"",y:"",z:"312.4",prof:8,eau:"3.6"},
+    layers:[
+      {de:0,a:0.4,litho:"terre_vegetale",description:"terre végétale brune, racines",pid:"0",obs:""},
+      {de:0.4,a:2.1,litho:"remblais",description:"remblais sablo-graveleux, débris de béton et mâchefers",pid:"12",obs:"légère odeur HC"},
+      {de:2.1,a:4.3,litho:"sable_grave",description:"sable ocre à graviers, humide à partir de 3,6 m",pid:"85",obs:"odeur HC forte, taches noires"},
+      {de:4.3,a:6.5,litho:"argile",description:"argile grise plastique compacte",pid:"3",obs:""},
+      {de:6.5,a:8,litho:"marne",description:"marne beige indurée (substratum)",pid:"0",obs:""}
+    ],
+    samples:[
+      {prof:1.5,ref:"S1 (1,0–2,0)",type:"Sol"},
+      {prof:3.0,ref:"S2 (2,5–3,5)",type:"Sol"},
+      {prof:3.8,ref:"PZ-eau",type:"Eau"}
+    ],
+    scale:55
+  };
+  syncHeaderInputs();renderAll();
+});
+
+/* -- init -- */
+document.getElementById("f-prof").value=state.header.prof;
+state.layers.push({de:0,a:2,litho:"remblais",description:"",pid:"",obs:""});
+renderAll();
+</script>
+</body>
+</html>
