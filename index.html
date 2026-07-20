@@ -426,7 +426,9 @@ function renderLog(){
   const xLith=xAxis+wAxis, wLith=78;
   const wEquip=34;
   const xEquip=xLith+wLith;
-  const xDesc=state.showEquipement ? xEquip+wEquip : xLith+wLith, wDesc=250;
+  const wEau=30;
+  const xEau=state.showEquipement ? xEquip+wEquip : xLith+wLith;
+  const xDesc=xEau+wEau, wDesc=250;
   const xObs=xDesc+wDesc, wObs=110;
   const xSamp=xObs+wObs, wSamp=70;
   const totalW=xSamp+wSamp+M.l;
@@ -443,26 +445,29 @@ function renderLog(){
   g+='<rect x="'+xAxis+'" y="'+M.t+'" width="'+(totalW-2*M.l)+'" height="'+headBand+'" fill="#2f3d45"/>';
   const heads=[["Prof.\n(m)",xAxis,wAxis],["Litho.",xLith,wLith]];
   if(state.showEquipement) heads.push(["Équip.",xEquip,wEquip]);
-  heads.push(["Description",xDesc,wDesc],["Observations",xObs,wObs],["Échant.",xSamp,wSamp]);
+  heads.push(["Eau",xEau,wEau],["Description",xDesc,wDesc],["Observations",xObs,wObs],["Échant.",xSamp,wSamp]);
   for(const[t,x,w] of heads){
     g+='<text x="'+(x+w/2)+'" y="'+(M.t+headBand/2+3.5)+'" fill="#eef1ee" font-size="9.5" font-family="Space Grotesk,sans-serif" font-weight="600" text-anchor="middle">'+esc(t.replace("\n"," "))+'</text>';
   }
   // cadre colonnes
   const vlines=[xLith];
   if(state.showEquipement) vlines.push(xEquip);
-  vlines.push(xDesc,xObs,xSamp,xSamp+wSamp);
+  vlines.push(xEau,xDesc,xObs,xSamp,xSamp+wSamp);
   for(const x of vlines){
     g+='<line x1="'+x+'" y1="'+top+'" x2="'+x+'" y2="'+(top+logH)+'" stroke="#b7b5a6" stroke-width="0.8"/>';
   }
   g+='<rect x="'+xAxis+'" y="'+top+'" width="'+(totalW-2*M.l)+'" height="'+logH+'" fill="none" stroke="#2f3d45" stroke-width="1"/>';
 
-  // graduations de profondeur
+  // graduations de profondeur (repères sur l'axe uniquement ; les séparations
+  // visuelles dans le corps du log viennent des limites de couches, pas d'une grille régulière)
   const majTick = scale>=55?0.5:1;
   for(let d=0;d<=prof+1e-9;d+=majTick){
     const yy=y(d);
+    const isFirst = d<1e-9;
+    const isLast = d>prof-1e-9;
     g+='<line x1="'+(xAxis+wAxis-5)+'" y1="'+yy+'" x2="'+xAxis+wAxis+'" y2="'+yy+'" stroke="#2f3d45" stroke-width="0.8"/>';
-    g+='<text x="'+(xAxis+wAxis-7)+'" y="'+(yy+3)+'" fill="#4a4d46" font-size="8.5" font-family="JetBrains Mono,monospace" text-anchor="end">'+(Math.round(d*100)/100)+'</text>';
-    if(d>0)g+='<line x1="'+xLith+'" y1="'+yy+'" x2="'+(xSamp+wSamp)+'" y2="'+yy+'" stroke="#e6e5dc" stroke-width="0.5"/>';
+    const ty = isFirst ? yy-3 : isLast ? yy+9 : yy+3;
+    g+='<text x="'+(xAxis+wAxis-7)+'" y="'+ty+'" fill="#4a4d46" font-size="8.5" font-family="JetBrains Mono,monospace" text-anchor="end">'+(Math.round(d*100)/100)+'</text>';
   }
 
   // couches
@@ -511,14 +516,15 @@ function renderLog(){
     }
   }
 
-  // niveau d'eau
+  // niveau d'eau (colonne indépendante)
   const eau=parseFloat(h.eau);
   if(!isNaN(eau)&&eau>=0&&eau<=prof){
     const ye=y(eau);
-    g+='<line x1="'+xLith+'" y1="'+ye+'" x2="'+(xLith+wLith)+'" y2="'+ye+'" stroke="#2e6b74" stroke-width="1.4"/>';
-    const mx=xLith+wLith/2;
+    g+='<rect x="'+xEau+'" y="'+ye+'" width="'+wEau+'" height="'+(top+logH-ye)+'" fill="#2e6b74" opacity="0.09"/>';
+    g+='<line x1="'+xEau+'" y1="'+ye+'" x2="'+(xEau+wEau)+'" y2="'+ye+'" stroke="#2e6b74" stroke-width="1.4"/>';
+    const mx=xEau+wEau/2;
     g+='<path d="M'+(mx-5)+' '+(ye+1)+' h10 l-5 6 z" fill="#2e6b74"/>';
-    g+='<text x="'+(xLith+wLith+3)+'" y="'+(ye-2)+'" fill="#2e6b74" font-size="8" font-family="JetBrains Mono,monospace">eau '+eau+' m</text>';
+    g+='<text x="'+mx+'" y="'+(ye-4)+'" fill="#2e6b74" font-size="7.5" font-family="JetBrains Mono,monospace" text-anchor="middle">'+eau+' m</text>';
   }
 
   // échantillons
