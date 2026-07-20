@@ -213,7 +213,7 @@
       <p class="section-title"><span class="n">4</span>Équipement / piézomètre</p>
       <label style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:500;color:var(--ink-soft);margin-bottom:10px;cursor:pointer">
         <input type="checkbox" id="f-show-equip" style="width:auto">
-        Inclure une colonne équipement (crépine, massif filtrant, bentonite, cimentation, tube plein)
+        Inclure les colonnes ouvrage : tubage (tube plein, crépine) et remplissage annulaire (massif filtrant, bentonite, cimentation)
       </label>
       <div id="equip-block" style="display:none">
         <div class="rows" id="equipement"></div>
@@ -266,13 +266,14 @@ const LITHOS = [
 ];
 const LITHO_MAP = Object.fromEntries(LITHOS.map(l=>[l.code,l]));
 
-/* équipement de piézomètre : code, libellé, teinte, figuré (SVG pattern) */
+/* équipement de piézomètre : code, libellé, teinte, figuré (SVG pattern)
+   cat "tub" = colonne tubage · cat "ann" = colonne remplissage annulaire */
 const EQUIPEMENTS = [
-  {code:"tube_plein", label:"Tube plein (PVC)", tint:"#f5f5f0", fig:'<path d="M5 0 v16 M11 0 v16" stroke="'+INK+'" stroke-width="1"/>'},
-  {code:"crepine", label:"Crépine", tint:"#eef1ee", fig:'<path d="M5 0 v16 M11 0 v16 M5 2 h6 M5 5 h6 M5 8 h6 M5 11 h6 M5 14 h6" stroke="'+INK+'" stroke-width="0.9"/>'},
-  {code:"massif_filtrant", label:"Massif filtrant (gravier)", tint:"#efe3ba", fig:'<path d="M5 0 v16 M11 0 v16" stroke="'+INK+'" stroke-width="0.6" opacity="0.6"/><circle cx="2.5" cy="4" r="1" fill="'+INK+'"/><circle cx="13.5" cy="4" r="1" fill="'+INK+'"/><circle cx="2.5" cy="12" r="1" fill="'+INK+'"/><circle cx="13.5" cy="12" r="1" fill="'+INK+'"/>'},
-  {code:"bentonite", label:"Bouchon bentonite", tint:"#d9dee2", fig:'<path d="M0 4 q4 -4 8 0 t8 0 M0 12 q4 -4 8 0 t8 0" stroke="'+INK+'" stroke-width="1" fill="none"/>'},
-  {code:"cimentation", label:"Cimentation", tint:"#c9c9c2", fig:'<path d="M4 4 h3 M5.5 2.5 v3 M12 10 h3 M13.5 8.5 v3 M4 12 h3 M5.5 10.5 v3" stroke="'+INK+'" stroke-width="0.8"/>'}
+  {code:"tube_plein", cat:"tub", label:"Tube plein (PVC)", tint:"#f5f5f0", fig:'<path d="M5 0 v16 M11 0 v16" stroke="'+INK+'" stroke-width="1"/>'},
+  {code:"crepine", cat:"tub", label:"Crépine", tint:"#eef1ee", fig:'<path d="M5 0 v16 M11 0 v16 M5 2 h6 M5 5 h6 M5 8 h6 M5 11 h6 M5 14 h6" stroke="'+INK+'" stroke-width="0.9"/>'},
+  {code:"massif_filtrant", cat:"ann", label:"Massif filtrant (gravier)", tint:"#efe3ba", fig:'<circle cx="4" cy="4" r="1" fill="'+INK+'"/><circle cx="12" cy="4" r="1" fill="'+INK+'"/><circle cx="8" cy="8" r="1" fill="'+INK+'"/><circle cx="4" cy="12" r="1" fill="'+INK+'"/><circle cx="12" cy="12" r="1" fill="'+INK+'"/>'},
+  {code:"bentonite", cat:"ann", label:"Bouchon bentonite", tint:"#d9dee2", fig:'<path d="M0 4 q4 -4 8 0 t8 0 M0 12 q4 -4 8 0 t8 0" stroke="'+INK+'" stroke-width="1" fill="none"/>'},
+  {code:"cimentation", cat:"ann", label:"Cimentation", tint:"#c9c9c2", fig:'<path d="M4 4 h3 M5.5 2.5 v3 M12 10 h3 M13.5 8.5 v3 M4 12 h3 M5.5 10.5 v3" stroke="'+INK+'" stroke-width="0.8"/>'}
 ];
 const EQUIP_MAP = Object.fromEntries(EQUIPEMENTS.map(e=>[e.code,e]));
 
@@ -324,7 +325,10 @@ function lithoOptions(sel){
   return LITHOS.map(l=>'<option value="'+l.code+'"'+(l.code===sel?' selected':'')+'>'+l.label+'</option>').join("");
 }
 function equipOptions(sel){
-  return EQUIPEMENTS.map(e=>'<option value="'+e.code+'"'+(e.code===sel?' selected':'')+'>'+e.label+'</option>').join("");
+  const grp=(cat,label)=>'<optgroup label="'+label+'">'
+    + EQUIPEMENTS.filter(e=>e.cat===cat).map(e=>'<option value="'+e.code+'"'+(e.code===sel?' selected':'')+'>'+e.label+'</option>').join("")
+    + '</optgroup>';
+  return grp("tub","Tubage")+grp("ann","Remplissage annulaire");
 }
 
 function renderLayerForm(){
@@ -420,15 +424,17 @@ function renderLog(){
   const h=state.header;
   const prof=Math.max(parseFloat(h.prof)||0,0.1);
   const scale=state.scale;               // px / mètre
-  // colonnes (x)
+  // colonnes (x) — « gut » : gouttière entre colonnes graphiques pour aérer la lecture
   const M={l:8,t:6};
+  const gut=7;
   const xAxis=M.l, wAxis=40;
-  const xLith=xAxis+wAxis, wLith=78;
-  const wEquip=34;
-  const xEquip=xLith+wLith;
+  const xLith=xAxis+wAxis+gut, wLith=78;
+  const wTub=24, wAnn=24;
+  const xTub=xLith+wLith+gut, xAnn=xTub+wTub+3;
+  const equipEnd=state.showEquipement ? xAnn+wAnn : xLith+wLith;
   const wEau=30;
-  const xEau=state.showEquipement ? xEquip+wEquip : xLith+wLith;
-  const xDesc=xEau+wEau, wDesc=250;
+  const xEau=equipEnd+gut;
+  const xDesc=xEau+wEau+gut, wDesc=250;
   const xObs=xDesc+wDesc, wObs=110;
   const xSamp=xObs+wObs, wSamp=88;
   const totalW=xSamp+wSamp+M.l;
@@ -446,16 +452,19 @@ function renderLog(){
   // en-têtes de colonnes
   g+='<rect x="'+xAxis+'" y="'+M.t+'" width="'+(totalW-2*M.l)+'" height="'+headBand+'" fill="#2f3d45"/>';
   const heads=[["Prof.\n(m)",xAxis,wAxis],["Litho.",xLith,wLith]];
-  if(state.showEquipement) heads.push(["Équip.",xEquip,wEquip]);
   heads.push(["Eau",xEau,wEau],["Description",xDesc,wDesc],["Observations",xObs,wObs],["Échant.",xSamp,wSamp]);
   for(const[t,x,w] of heads){
     g+='<text x="'+(x+w/2)+'" y="'+(M.t+headBand/2+3.5)+'" fill="#eef1ee" font-size="9.5" font-family="Space Grotesk,sans-serif" font-weight="600" text-anchor="middle">'+esc(t.replace("\n"," "))+'</text>';
   }
-  // cadre colonnes
-  const vlines=[xLith];
-  if(state.showEquipement) vlines.push(xEquip);
-  vlines.push(xEau,xDesc,xObs,xSamp,xSamp+wSamp);
-  for(const x of vlines){
+  if(state.showEquipement){
+    // en-tête sur deux niveaux : « Ouvrage » puis les deux sous-colonnes
+    const cx=(xTub+xAnn+wAnn)/2;
+    g+='<text x="'+cx+'" y="'+(M.t+11)+'" fill="#eef1ee" font-size="8.5" font-family="Space Grotesk,sans-serif" font-weight="600" text-anchor="middle">Ouvrage</text>';
+    g+='<text x="'+(xTub+wTub/2)+'" y="'+(M.t+21)+'" fill="#a9bcc0" font-size="6.5" font-family="Space Grotesk,sans-serif" text-anchor="middle">Tub.</text>';
+    g+='<text x="'+(xAnn+wAnn/2)+'" y="'+(M.t+21)+'" fill="#a9bcc0" font-size="6.5" font-family="Space Grotesk,sans-serif" text-anchor="middle">Annul.</text>';
+  }
+  // séparateurs des colonnes texte
+  for(const x of [xObs,xSamp]){
     g+='<line x1="'+x+'" y1="'+top+'" x2="'+x+'" y2="'+(top+logH)+'" stroke="#b7b5a6" stroke-width="0.8"/>';
   }
   g+='<rect x="'+xAxis+'" y="'+top+'" width="'+(totalW-2*M.l)+'" height="'+logH+'" fill="none" stroke="#2f3d45" stroke-width="1"/>';
@@ -482,7 +491,7 @@ function renderLog(){
     g+='<rect x="'+xLith+'" y="'+y0+'" width="'+wLith+'" height="'+hh+'" fill="url(#pat-'+ly.litho+')"/>';
     // limite de couche : trait net sur la lithologie, discret sur les colonnes texte
     g+='<line x1="'+xLith+'" y1="'+y1+'" x2="'+(xLith+wLith)+'" y2="'+y1+'" stroke="#2f3d45" stroke-width="0.9"/>';
-    if(y1<top+logH-0.5)g+='<line x1="'+xEau+'" y1="'+y1+'" x2="'+(xSamp+wSamp)+'" y2="'+y1+'" stroke="#d8d6ca" stroke-width="0.7"/>';
+    if(y1<top+logH-0.5)g+='<line x1="'+xDesc+'" y1="'+y1+'" x2="'+(xSamp+wSamp)+'" y2="'+y1+'" stroke="#d8d6ca" stroke-width="0.7"/>';
     // description
     const lith=LITHO_MAP[ly.litho]||LITHOS[0];
     const descTxt=(lith.label+(ly.description?" — "+ly.description:""));
@@ -509,15 +518,16 @@ function renderLog(){
     if(flagged){g+='<circle cx="'+(xObs+wObs-8)+'" cy="'+(y0+8)+'" r="3" fill="#a8620a"/>';}
   }
 
-  // équipement / piézomètre
+  // ouvrage : tubage et remplissage annulaire, chacun dans sa sous-colonne
   if(state.showEquipement){
     const sortedEq=[...state.equipement].sort((a,b)=>(parseFloat(a.de)||0)-(parseFloat(b.de)||0));
     for(const eq of sortedEq){
       const de=parseFloat(eq.de)||0, a=parseFloat(eq.a)||0;
       if(a<=de)continue;
       const y0=y(de), y1=y(a), hh=y1-y0;
-      g+='<rect x="'+xEquip+'" y="'+y0+'" width="'+wEquip+'" height="'+hh+'" fill="url(#pat-eq-'+eq.type+')"/>';
-      g+='<line x1="'+xEquip+'" y1="'+y1+'" x2="'+(xEquip+wEquip)+'" y2="'+y1+'" stroke="#2f3d45" stroke-width="0.7"/>';
+      const cat=(EQUIP_MAP[eq.type]||EQUIPEMENTS[0]).cat;
+      const ex=cat==="tub"?xTub:xAnn, ew=cat==="tub"?wTub:wAnn;
+      g+='<rect x="'+ex+'" y="'+y0+'" width="'+ew+'" height="'+hh+'" fill="url(#pat-eq-'+eq.type+')" stroke="#2f3d45" stroke-width="0.7"/>';
     }
   }
 
@@ -540,6 +550,10 @@ function renderLog(){
     g+='<line x1="'+xSamp+'" y1="'+yy+'" x2="'+(xSamp+6)+'" y2="'+yy+'" stroke="#a8620a" stroke-width="1"/>';
     g+='<text x="'+(mx+9)+'" y="'+(yy+3)+'" fill="#1e201d" font-size="7.5" font-family="JetBrains Mono,monospace"'+HALO+'>'+esc(sp.ref||"")+'</text>';
   }
+
+  // contours des colonnes graphiques, par-dessus les figurés pour un trait net
+  g+='<rect x="'+xLith+'" y="'+top+'" width="'+wLith+'" height="'+logH+'" fill="none" stroke="#2f3d45" stroke-width="1"/>';
+  g+='<rect x="'+xEau+'" y="'+top+'" width="'+wEau+'" height="'+logH+'" fill="none" stroke="#b7b5a6" stroke-width="0.8"/>';
 
   const svg='<svg class="log-svg" viewBox="0 0 '+totalW+' '+totalH+'" xmlns="http://www.w3.org/2000/svg" font-family="Space Grotesk,sans-serif">'+g+'</svg>';
 
@@ -694,12 +708,11 @@ document.getElementById("btn-example").addEventListener("click",()=>{
       {prof:3.8,ref:"PZ-eau",type:"Eau"}
     ],
     equipement:[
-      {de:0,a:1,type:"tube_plein"},
-      {de:1,a:1.5,type:"cimentation"},
-      {de:1.5,a:2.8,type:"bentonite"},
-      {de:2.8,a:3.2,type:"massif_filtrant"},
+      {de:0,a:3.2,type:"tube_plein"},
       {de:3.2,a:6.5,type:"crepine"},
-      {de:6.5,a:8,type:"massif_filtrant"}
+      {de:0,a:1,type:"cimentation"},
+      {de:1,a:2.8,type:"bentonite"},
+      {de:2.8,a:6.5,type:"massif_filtrant"}
     ],
     showEquipement:true,
     scale:55
