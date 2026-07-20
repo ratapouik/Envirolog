@@ -20,6 +20,8 @@
     --accent-soft:#e2edee;
     --flag:#a8620a;
     --flag-soft:#f4e6d2;
+    --equip:#55606a;
+    --equip-soft:#e6e8ea;
     --sans:"Space Grotesk",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
     --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   }
@@ -208,7 +210,19 @@
     </div>
 
     <div class="section">
-      <p class="section-title"><span class="n">4</span>Échelle du log</p>
+      <p class="section-title"><span class="n">4</span>Équipement / piézomètre</p>
+      <label style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:500;color:var(--ink-soft);margin-bottom:10px;cursor:pointer">
+        <input type="checkbox" id="f-show-equip" style="width:auto">
+        Inclure une colonne équipement (crépine, massif filtrant, bentonite, cimentation, tube plein)
+      </label>
+      <div id="equip-block" style="display:none">
+        <div class="rows" id="equipement"></div>
+        <button class="add-btn" id="add-equip">+ Ajouter un tronçon d'équipement</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <p class="section-title"><span class="n">5</span>Échelle du log</p>
       <div class="scale-row">
         <input type="range" id="f-scale" min="20" max="90" step="5" value="45">
         <span class="scale-val" id="scale-val">45 px/m</span>
@@ -252,6 +266,16 @@ const LITHOS = [
 ];
 const LITHO_MAP = Object.fromEntries(LITHOS.map(l=>[l.code,l]));
 
+/* équipement de piézomètre : code, libellé, teinte, figuré (SVG pattern) */
+const EQUIPEMENTS = [
+  {code:"tube_plein", label:"Tube plein (PVC)", tint:"#f5f5f0", fig:'<path d="M5 0 v16 M11 0 v16" stroke="'+INK+'" stroke-width="1"/>'},
+  {code:"crepine", label:"Crépine", tint:"#eef1ee", fig:'<path d="M5 0 v16 M11 0 v16 M5 2 h6 M5 5 h6 M5 8 h6 M5 11 h6 M5 14 h6" stroke="'+INK+'" stroke-width="0.9"/>'},
+  {code:"massif_filtrant", label:"Massif filtrant (gravier)", tint:"#efe3ba", fig:'<path d="M5 0 v16 M11 0 v16" stroke="'+INK+'" stroke-width="0.6" opacity="0.6"/><circle cx="2.5" cy="4" r="1" fill="'+INK+'"/><circle cx="13.5" cy="4" r="1" fill="'+INK+'"/><circle cx="2.5" cy="12" r="1" fill="'+INK+'"/><circle cx="13.5" cy="12" r="1" fill="'+INK+'"/>'},
+  {code:"bentonite", label:"Bouchon bentonite", tint:"#d9dee2", fig:'<path d="M0 4 q4 -4 8 0 t8 0 M0 12 q4 -4 8 0 t8 0" stroke="'+INK+'" stroke-width="1" fill="none"/>'},
+  {code:"cimentation", label:"Cimentation", tint:"#c9c9c2", fig:'<path d="M4 4 h3 M5.5 2.5 v3 M12 10 h3 M13.5 8.5 v3 M4 12 h3 M5.5 10.5 v3" stroke="'+INK+'" stroke-width="0.8"/>'}
+];
+const EQUIP_MAP = Object.fromEntries(EQUIPEMENTS.map(e=>[e.code,e]));
+
 /* build <pattern> defs */
 (function buildDefs(){
   const defs = document.getElementById("litho-defs");
@@ -259,6 +283,10 @@ const LITHO_MAP = Object.fromEntries(LITHOS.map(l=>[l.code,l]));
   for(const l of LITHOS){
     s += '<pattern id="pat-'+l.code+'" width="16" height="16" patternUnits="userSpaceOnUse">'
        + '<rect width="16" height="16" fill="'+l.tint+'"/>'+l.fig+'</pattern>';
+  }
+  for(const e of EQUIPEMENTS){
+    s += '<pattern id="pat-eq-'+e.code+'" width="16" height="16" patternUnits="userSpaceOnUse">'
+       + '<rect width="16" height="16" fill="'+e.tint+'"/>'+e.fig+'</pattern>';
   }
   defs.innerHTML = s;
 })();
@@ -268,6 +296,10 @@ function swatchSVG(code,w,h){
   return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'
     +'<rect width="'+w+'" height="'+h+'" fill="url(#pat-'+code+')"/></svg>';
 }
+function eqSwatchSVG(code,w,h){
+  return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'
+    +'<rect width="'+w+'" height="'+h+'" fill="url(#pat-eq-'+code+')"/></svg>';
+}
 
 /* ==================================================================
    2. État
@@ -276,6 +308,8 @@ let state = {
   header:{site:"",ref:"",date:"",methode:"",operateur:"",x:"",y:"",z:"",prof:8,eau:""},
   layers:[],
   samples:[],
+  equipement:[],
+  showEquipement:false,
   scale:45
 };
 
@@ -284,9 +318,13 @@ let state = {
    ================================================================== */
 const layersEl = document.getElementById("layers");
 const samplesEl = document.getElementById("samples");
+const equipEl = document.getElementById("equipement");
 
 function lithoOptions(sel){
   return LITHOS.map(l=>'<option value="'+l.code+'"'+(l.code===sel?' selected':'')+'>'+l.label+'</option>').join("");
+}
+function equipOptions(sel){
+  return EQUIPEMENTS.map(e=>'<option value="'+e.code+'"'+(e.code===sel?' selected':'')+'>'+e.label+'</option>').join("");
 }
 
 function renderLayerForm(){
@@ -339,6 +377,29 @@ function renderSampleForm(){
   });
 }
 
+function renderEquipForm(){
+  equipEl.innerHTML = "";
+  state.equipement.forEach((eq,i)=>{
+    const e = EQUIP_MAP[eq.type]||EQUIPEMENTS[0];
+    const c = document.createElement("div");
+    c.className="row-card";
+    c.style.borderLeftColor="var(--equip)";
+    c.innerHTML =
+      '<div class="row-head">'
+      + '<span class="row-idx" style="background:var(--equip)">P'+(i+1)+'</span>'
+      + '<span class="swatch">'+eqSwatchSVG(eq.type,22,16)+'</span>'
+      + '<span class="row-litho">'+e.label+'</span>'
+      + '<button class="del" title="Supprimer" data-del-equip="'+i+'">✕</button>'
+      + '</div>'
+      + '<div class="depth-pair">'
+      +   '<div class="field"><label>De (m)</label><input type="number" step="0.05" min="0" value="'+eq.de+'" data-ek="de" data-i="'+i+'"></div>'
+      +   '<div class="field"><label>À (m)</label><input type="number" step="0.05" min="0" value="'+eq.a+'" data-ek="a" data-i="'+i+'"></div>'
+      + '</div>'
+      + '<div class="field" style="margin-top:8px"><label>Type</label><select data-ek="type" data-i="'+i+'">'+equipOptions(eq.type)+'</select></div>';
+    equipEl.appendChild(c);
+  });
+}
+
 /* ==================================================================
    4. Rendu du LOG (SVG)
    ================================================================== */
@@ -363,7 +424,9 @@ function renderLog(){
   const M={l:8,t:6};
   const xAxis=M.l, wAxis=40;
   const xLith=xAxis+wAxis, wLith=78;
-  const xDesc=xLith+wLith, wDesc=250;
+  const wEquip=34;
+  const xEquip=xLith+wLith;
+  const xDesc=state.showEquipement ? xEquip+wEquip : xLith+wLith, wDesc=250;
   const xObs=xDesc+wDesc, wObs=110;
   const xSamp=xObs+wObs, wSamp=70;
   const totalW=xSamp+wSamp+M.l;
@@ -377,12 +440,17 @@ function renderLog(){
   let g="";
   // en-têtes de colonnes
   g+='<rect x="'+xAxis+'" y="'+M.t+'" width="'+(totalW-2*M.l)+'" height="'+headBand+'" fill="#2f3d45"/>';
-  const heads=[["Prof.\n(m)",xAxis,wAxis],["Litho.",xLith,wLith],["Description",xDesc,wDesc],["Observations",xObs,wObs],["Échant.",xSamp,wSamp]];
+  const heads=[["Prof.\n(m)",xAxis,wAxis],["Litho.",xLith,wLith]];
+  if(state.showEquipement) heads.push(["Équip.",xEquip,wEquip]);
+  heads.push(["Description",xDesc,wDesc],["Observations",xObs,wObs],["Échant.",xSamp,wSamp]);
   for(const[t,x,w] of heads){
     g+='<text x="'+(x+w/2)+'" y="'+(M.t+headBand/2+3.5)+'" fill="#eef1ee" font-size="9.5" font-family="Space Grotesk,sans-serif" font-weight="600" text-anchor="middle">'+esc(t.replace("\n"," "))+'</text>';
   }
   // cadre colonnes
-  for(const x of [xLith,xDesc,xObs,xSamp,xSamp+wSamp]){
+  const vlines=[xLith];
+  if(state.showEquipement) vlines.push(xEquip);
+  vlines.push(xDesc,xObs,xSamp,xSamp+wSamp);
+  for(const x of vlines){
     g+='<line x1="'+x+'" y1="'+top+'" x2="'+x+'" y2="'+(top+logH)+'" stroke="#b7b5a6" stroke-width="0.8"/>';
   }
   g+='<rect x="'+xAxis+'" y="'+top+'" width="'+(totalW-2*M.l)+'" height="'+logH+'" fill="none" stroke="#2f3d45" stroke-width="1"/>';
@@ -430,6 +498,18 @@ function renderLog(){
     if(flagged){g+='<circle cx="'+(xObs+wObs-8)+'" cy="'+(y0+8)+'" r="3" fill="#a8620a"/>';}
   }
 
+  // équipement / piézomètre
+  if(state.showEquipement){
+    const sortedEq=[...state.equipement].sort((a,b)=>(parseFloat(a.de)||0)-(parseFloat(b.de)||0));
+    for(const eq of sortedEq){
+      const de=parseFloat(eq.de)||0, a=parseFloat(eq.a)||0;
+      if(a<=de)continue;
+      const y0=y(de), y1=y(a), hh=y1-y0;
+      g+='<rect x="'+xEquip+'" y="'+y0+'" width="'+wEquip+'" height="'+hh+'" fill="url(#pat-eq-'+eq.type+')"/>';
+      g+='<line x1="'+xEquip+'" y1="'+y1+'" x2="'+(xEquip+wEquip)+'" y2="'+y1+'" stroke="#2f3d45" stroke-width="0.7"/>';
+    }
+  }
+
   // niveau d'eau
   const eau=parseFloat(h.eau);
   if(!isNaN(eau)&&eau>=0&&eau<=prof){
@@ -460,6 +540,15 @@ function renderLog(){
       + '</div></div>';
   }
 
+  // légende de l'équipement réellement utilisé
+  const usedEquip = state.showEquipement ? [...new Set(state.equipement.map(e=>e.type))] : [];
+  let equipLegend="";
+  if(usedEquip.length){
+    equipLegend='<div class="legend"><h3>Équipement</h3><div class="legend-grid">'
+      + usedEquip.map(code=>{const e=EQUIP_MAP[code];return '<div class="legend-item"><span class="sw">'+eqSwatchSVG(code,26,15)+'</span>'+esc(e.label)+'</div>';}).join("")
+      + '</div></div>';
+  }
+
   // méta
   const metaFields=[["Site",h.site],["Réf. sondage",h.ref],["Date",h.date],["Méthode",h.methode],
     ["X / Y",(h.x||h.y)?(esc(h.x)+" / "+esc(h.y)):""],["Z sol",h.z?h.z+" m NGF":""],
@@ -467,7 +556,7 @@ function renderLog(){
   const meta=metaFields.map(([k,v])=>'<div><span class="k">'+k+'</span><span class="v">'+(esc(v)||"—")+'</span></div>').join("");
 
   const bodyLog = state.layers.length
-    ? svg+legend
+    ? svg+legend+equipLegend
     : '<div class="empty-note">Ajoutez au moins une couche pour dessiner le log.</div>';
 
   sheet.innerHTML =
@@ -482,7 +571,7 @@ function renderLog(){
 /* ==================================================================
    5. Rendu global + liaisons
    ================================================================== */
-function renderAll(){renderLayerForm();renderSampleForm();renderLog();}
+function renderAll(){renderLayerForm();renderSampleForm();renderEquipForm();renderLog();}
 
 /* -- champs d'en-tête -- */
 const headerMap={"f-site":"site","f-ref":"ref","f-date":"date","f-methode":"methode","f-operateur":"operateur","f-x":"x","f-y":"y","f-z":"z","f-prof":"prof","f-eau":"eau"};
@@ -527,6 +616,30 @@ document.getElementById("add-sample").addEventListener("click",()=>{
   renderAll();
 });
 
+/* -- équipement / piézomètre : délégation -- */
+const showEquipEl=document.getElementById("f-show-equip"), equipBlock=document.getElementById("equip-block");
+showEquipEl.addEventListener("change",()=>{
+  state.showEquipement=showEquipEl.checked;
+  equipBlock.style.display=state.showEquipement?"":"none";
+  renderLog();
+});
+equipEl.addEventListener("input",e=>{
+  const t=e.target,i=+t.dataset.i,k=t.dataset.ek;
+  if(i>=0&&k){state.equipement[i][k]=t.value;
+    if(k==="type"){renderEquipForm();}
+    renderLog();}
+});
+equipEl.addEventListener("click",e=>{
+  const b=e.target.closest("[data-del-equip]");if(!b)return;
+  state.equipement.splice(+b.dataset.delEquip,1);renderAll();
+});
+document.getElementById("add-equip").addEventListener("click",()=>{
+  const last=state.equipement[state.equipement.length-1];
+  const de=last?parseFloat(last.a)||0:0;
+  state.equipement.push({de:de,a:de+1,type:"tube_plein"});
+  renderAll();
+});
+
 /* -- barre d'outils -- */
 document.getElementById("btn-print").addEventListener("click",()=>window.print());
 document.getElementById("btn-export").addEventListener("click",()=>{
@@ -539,7 +652,7 @@ document.getElementById("file-import").addEventListener("change",e=>{
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
   r.onload=()=>{try{const d=JSON.parse(r.result);
-    state=Object.assign({header:{},layers:[],samples:[],scale:45},d);
+    state=Object.assign({header:{},layers:[],samples:[],equipement:[],showEquipement:false,scale:45},d);
     syncHeaderInputs();renderAll();}catch(err){alert("Fichier illisible : "+err.message);}};
   r.readAsText(f);e.target.value="";
 });
@@ -547,6 +660,8 @@ document.getElementById("file-import").addEventListener("change",e=>{
 function syncHeaderInputs(){
   for(const[id,key] of Object.entries(headerMap)){document.getElementById(id).value=state.header[key]??"";}
   scaleEl.value=state.scale;scaleVal.textContent=state.scale+" px/m";
+  showEquipEl.checked=!!state.showEquipement;
+  equipBlock.style.display=state.showEquipement?"":"none";
 }
 
 /* -- jeu d'exemple -- */
@@ -566,6 +681,15 @@ document.getElementById("btn-example").addEventListener("click",()=>{
       {prof:3.0,ref:"S2 (2,5–3,5)",type:"Sol"},
       {prof:3.8,ref:"PZ-eau",type:"Eau"}
     ],
+    equipement:[
+      {de:0,a:1,type:"tube_plein"},
+      {de:1,a:1.5,type:"cimentation"},
+      {de:1.5,a:2.8,type:"bentonite"},
+      {de:2.8,a:3.2,type:"massif_filtrant"},
+      {de:3.2,a:6.5,type:"crepine"},
+      {de:6.5,a:8,type:"massif_filtrant"}
+    ],
+    showEquipement:true,
     scale:55
   };
   syncHeaderInputs();renderAll();
