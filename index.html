@@ -137,6 +137,18 @@
   .meta div{font-size:11px}
   .meta .k{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);display:block}
   .meta .v{font-family:var(--mono);font-size:12px;color:var(--ink)}
+  .capot-box{
+    display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;
+    background:var(--accent-soft);border:1px solid var(--accent);border-radius:6px;
+    padding:7px 12px;margin-bottom:14px;
+  }
+  .capot-box .tag{
+    font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    color:#fff;background:var(--accent);border-radius:3px;padding:2px 6px;flex:none;
+  }
+  .capot-box .k{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+  .capot-box .v{font-family:var(--mono);font-size:11.5px;color:var(--ink);margin-right:4px}
+  .capot-box .sep{color:var(--line-strong)}
   .log-svg{width:100%;display:block}
   .legend{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
   .legend h3{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 8px}
@@ -193,6 +205,8 @@
         <div class="field"><label>Z sol (m NGF)</label><input id="f-z" placeholder=""></div>
         <div class="field"><label>Prof. totale (m)</label><input id="f-prof" type="number" step="0.1" value="8" min="0.1"></div>
         <div class="field"><label>Niveau d'eau (m)</label><input id="f-eau" type="number" step="0.1" placeholder="ex : 3.2"></div>
+        <div class="field"><label>Type de capot</label><input id="f-capot-type" placeholder="ex : capot fonte, bouche à clé"></div>
+        <div class="field"><label>Capot / TN (m)</label><input id="f-capot-h" placeholder="ex : +0.3, affleurant"></div>
       </div>
     </div>
 
@@ -306,7 +320,7 @@ function eqSwatchSVG(code,w,h){
    2. État
    ================================================================== */
 let state = {
-  header:{site:"",ref:"",date:"",methode:"",operateur:"",x:"",y:"",z:"",prof:8,eau:""},
+  header:{site:"",ref:"",date:"",methode:"",operateur:"",x:"",y:"",z:"",prof:8,eau:"",capotType:"",capotHauteur:""},
   layers:[],
   samples:[],
   equipement:[],
@@ -428,13 +442,13 @@ function renderLog(){
   const M={l:8,t:6};
   const gut=7;
   const xAxis=M.l, wAxis=40;
-  const xLith=xAxis+wAxis+gut, wLith=78;
+  const xLith=xAxis+wAxis+gut, wLith=54;
   const wTub=24, wAnn=24;
   const xTub=xLith+wLith+gut, xAnn=xTub+wTub+3;
   const equipEnd=state.showEquipement ? xAnn+wAnn : xLith+wLith;
   const wEau=30;
   const xEau=equipEnd+gut;
-  const xDesc=xEau+wEau+gut, wDesc=250;
+  const xDesc=xEau+wEau+gut, wDesc=272;
   const xObs=xDesc+wDesc, wObs=110;
   const xSamp=xObs+wObs, wSamp=88;
   const totalW=xSamp+wSamp+M.l;
@@ -473,12 +487,12 @@ function renderLog(){
   // visuelles dans le corps du log viennent des limites de couches, pas d'une grille régulière)
   const majTick = scale>=55?0.5:1;
   for(let d=0;d<=prof+1e-9;d+=majTick){
+    // les profondeurs 0 et totale ne sont pas rappelées ici : le cadre du log
+    // marque déjà ces limites, et chaque couche affiche son propre intervalle
+    if(d<1e-9||d>prof-1e-9)continue;
     const yy=y(d);
-    const isFirst = d<1e-9;
-    const isLast = d>prof-1e-9;
     g+='<line x1="'+(xAxis+wAxis-5)+'" y1="'+yy+'" x2="'+(xAxis+wAxis)+'" y2="'+yy+'" stroke="#2f3d45" stroke-width="0.8"/>';
-    const ty = isFirst ? yy-6 : isLast ? yy+12 : yy+3;
-    g+='<text x="'+(xAxis+wAxis-7)+'" y="'+ty+'" fill="#4a4d46" font-size="8.5" font-family="JetBrains Mono,monospace" text-anchor="end">'+(Math.round(d*100)/100)+'</text>';
+    g+='<text x="'+(xAxis+wAxis-7)+'" y="'+(yy+3)+'" fill="#4a4d46" font-size="8.5" font-family="JetBrains Mono,monospace" text-anchor="end">'+(Math.round(d*100)/100)+'</text>';
   }
 
   // couches
@@ -492,10 +506,11 @@ function renderLog(){
     // limite de couche : trait net sur la lithologie, discret sur les colonnes texte
     g+='<line x1="'+xLith+'" y1="'+y1+'" x2="'+(xLith+wLith)+'" y2="'+y1+'" stroke="#2f3d45" stroke-width="0.9"/>';
     if(y1<top+logH-0.5)g+='<line x1="'+xDesc+'" y1="'+y1+'" x2="'+(xSamp+wSamp)+'" y2="'+y1+'" stroke="#d8d6ca" stroke-width="0.7"/>';
-    // description
+    // description, préfixée par l'intervalle de profondeur de la couche
     const lith=LITHO_MAP[ly.litho]||LITHOS[0];
-    const descTxt=(lith.label+(ly.description?" — "+ly.description:""));
-    const lines=wrapText(descTxt,52);
+    const range=(Math.round(de*100)/100)+"–"+(Math.round(a*100)/100)+" m";
+    const descTxt=(range+" — "+lith.label+(ly.description?" — "+ly.description:""));
+    const lines=wrapText(descTxt,58);
     const maxLines=Math.max(1,Math.floor((hh-4)/10));
     let ty=y0+11;
     lines.slice(0,maxLines).forEach((ln,k)=>{
@@ -561,7 +576,7 @@ function renderLog(){
   const usedCodes=[...new Set(state.layers.map(l=>l.litho))];
   let legend="";
   if(usedCodes.length){
-    legend='<div class="legend"><h3>Figurés employés</h3><div class="legend-grid">'
+    legend='<div class="legend"><h3>Légende lithologie</h3><div class="legend-grid">'
       + usedCodes.map(code=>{const l=LITHO_MAP[code];return '<div class="legend-item"><span class="sw">'+swatchSVG(code,26,15)+'</span>'+esc(l.label)+'</div>';}).join("")
       + '</div></div>';
   }
@@ -586,6 +601,15 @@ function renderLog(){
     ["Prof. totale",prof+" m"],["Niveau d'eau",(h.eau!==""&&h.eau!=null)?h.eau+" m":"—"]];
   const meta=metaFields.map(([k,v])=>'<div><span class="k">'+k+'</span><span class="v">'+(esc(v)||"—")+'</span></div>').join("");
 
+  // encart capot de tête de piézomètre (affiché seulement si renseigné)
+  const capotBox=(h.capotType||h.capotHauteur)
+    ? '<div class="capot-box"><span class="tag">Capot</span>'
+      + '<span class="v">'+(esc(h.capotType)||"—")+'</span>'
+      + '<span class="sep">·</span>'
+      + '<span class="k">Niveau / TN</span><span class="v">'+(esc(h.capotHauteur)||"—")+'</span>'
+      + '</div>'
+    : '';
+
   const bodyLog = state.layers.length
     ? svg+legend+equipLegend
     : '<div class="empty-note">Ajoutez au moins une couche pour dessiner le log.</div>';
@@ -596,6 +620,7 @@ function renderLog(){
     + '<div class="sheet-ref"><div class="big">'+(esc(h.ref)||"—")+'</div><div class="sub">'+(esc(h.date)||"")+'</div></div>'
     + '</div>'
     + '<div class="meta">'+meta+'</div>'
+    + capotBox
     + bodyLog;
 }
 
@@ -605,7 +630,7 @@ function renderLog(){
 function renderAll(){renderLayerForm();renderSampleForm();renderEquipForm();renderLog();}
 
 /* -- champs d'en-tête -- */
-const headerMap={"f-site":"site","f-ref":"ref","f-date":"date","f-methode":"methode","f-operateur":"operateur","f-x":"x","f-y":"y","f-z":"z","f-prof":"prof","f-eau":"eau"};
+const headerMap={"f-site":"site","f-ref":"ref","f-date":"date","f-methode":"methode","f-operateur":"operateur","f-x":"x","f-y":"y","f-z":"z","f-prof":"prof","f-eau":"eau","f-capot-type":"capotType","f-capot-h":"capotHauteur"};
 for(const[id,key] of Object.entries(headerMap)){
   const el=document.getElementById(id);
   el.addEventListener("input",()=>{state.header[key]=el.value;renderLog();});
@@ -699,7 +724,8 @@ function syncHeaderInputs(){
 document.getElementById("btn-example").addEventListener("click",()=>{
   state={
     header:{site:"Ancienne station-service",ref:"PZ1",date:new Date().toISOString().slice(0,10),
-      methode:"Tarière hélicoïdale Ø63 mm",operateur:"",x:"",y:"",z:"",prof:8,eau:"3.6"},
+      methode:"Tarière hélicoïdale Ø63 mm",operateur:"",x:"",y:"",z:"",prof:8,eau:"3.6",
+      capotType:"Capot fonte carré, bouche à clé",capotHauteur:"affleurant (0 m)"},
     layers:[
       {de:0,a:0.4,litho:"terre_vegetale",description:"terre végétale brune, racines",pid:"0",obs:""},
       {de:0.4,a:2.1,litho:"remblais",description:"remblais sablo-graveleux, débris de béton et mâchefers",pid:"12",obs:"légère odeur HC"},
