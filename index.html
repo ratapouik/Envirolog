@@ -133,22 +133,15 @@
   .sheet-ref{text-align:right;font-family:var(--mono)}
   .sheet-ref .big{font-size:19px;font-weight:700;color:var(--slate)}
   .sheet-ref .sub{font-size:10.5px;color:var(--ink-soft)}
-  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:7px 16px;margin-bottom:16px}
+  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 16px;margin:0}
   .meta div{font-size:11px}
   .meta .k{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);display:block}
   .meta .v{font-family:var(--mono);font-size:12px;color:var(--ink)}
-  .capot-box{
-    display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;
-    background:var(--accent-soft);border:1px solid var(--accent);border-radius:6px;
-    padding:7px 12px;margin-bottom:14px;
+  .info-box{
+    border:1px solid var(--line-strong);border-radius:6px;background:var(--card);
+    padding:11px 14px 13px;margin-bottom:16px;
   }
-  .capot-box .tag{
-    font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-    color:#fff;background:var(--accent);border-radius:3px;padding:2px 6px;flex:none;
-  }
-  .capot-box .k{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
-  .capot-box .v{font-family:var(--mono);font-size:11.5px;color:var(--ink);margin-right:4px}
-  .capot-box .sep{color:var(--line-strong)}
+  .info-box h3{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:0 0 10px;font-weight:700}
   .log-svg{width:100%;display:block}
   .legend{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
   .legend h3{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 8px}
@@ -195,7 +188,8 @@
     <div class="section">
       <p class="section-title"><span class="n">1</span>Fiche du sondage</p>
       <div class="grid2">
-        <div class="field wide"><label>Site / affaire</label><input id="f-site" placeholder="Ancienne station-service"></div>
+        <div class="field wide"><label>Client / Site</label><input id="f-site" placeholder="Nom du client — nom du site"></div>
+        <div class="field"><label>Référence dossier</label><input id="f-ref-dossier" placeholder="ex : DOS-2026-014"></div>
         <div class="field"><label>Référence sondage</label><input id="f-ref" placeholder="PZ1"></div>
         <div class="field"><label>Date</label><input id="f-date" type="date"></div>
         <div class="field"><label>Méthode de forage</label><input id="f-methode" placeholder="Tarière Ø63 mm"></div>
@@ -205,8 +199,6 @@
         <div class="field"><label>Z sol (m NGF)</label><input id="f-z" placeholder=""></div>
         <div class="field"><label>Prof. totale (m)</label><input id="f-prof" type="number" step="0.1" value="8" min="0.1"></div>
         <div class="field"><label>Niveau d'eau (m)</label><input id="f-eau" type="number" step="0.1" placeholder="ex : 3.2"></div>
-        <div class="field"><label>Type de capot</label><input id="f-capot-type" placeholder="ex : capot fonte, bouche à clé"></div>
-        <div class="field"><label>Capot / TN (m)</label><input id="f-capot-h" placeholder="ex : +0.3, affleurant"></div>
       </div>
     </div>
 
@@ -230,6 +222,15 @@
         Inclure les colonnes ouvrage : tubage (tube plein, crépine) et remplissage annulaire (massif filtrant, bentonite, cimentation)
       </label>
       <div id="equip-block" style="display:none">
+        <p class="hint" style="margin:0 0 8px">Tête d'ouvrage</p>
+        <div class="grid2" style="margin-bottom:14px">
+          <div class="field"><label>Ø extérieur forage (mm)</label><input id="f-diam-forage" type="number" step="1" min="0" placeholder="ex : 63"></div>
+          <div class="field"><label>Ø intérieur tubage (mm)</label><input id="f-diam-tubage" type="number" step="1" min="0" placeholder="ex : 50"></div>
+          <div class="field wide"><label>Type de tête d'ouvrage</label><input id="f-tete-type" placeholder="ex : bouche à clé, tête aérienne, regard béton"></div>
+          <div class="field wide"><label>Protection mécanique</label><input id="f-protection" placeholder="ex : arceau, borne, glissière"></div>
+          <div class="field"><label>Hauteur capot (m)</label><input id="f-h-capot" type="number" step="0.05" min="0" placeholder="ex : 0.15"></div>
+          <div class="field"><label>Hauteur tube / TN (m)</label><input id="f-h-tube" type="number" step="0.05" placeholder="ex : 0.8 ou 0"></div>
+        </div>
         <div class="rows" id="equipement"></div>
         <button class="add-btn" id="add-equip">+ Ajouter un tronçon d'équipement</button>
       </div>
@@ -320,7 +321,8 @@ function eqSwatchSVG(code,w,h){
    2. État
    ================================================================== */
 let state = {
-  header:{site:"",ref:"",date:"",methode:"",operateur:"",x:"",y:"",z:"",prof:8,eau:"",capotType:"",capotHauteur:""},
+  header:{site:"",refDossier:"",ref:"",date:"",methode:"",operateur:"",x:"",y:"",z:"",prof:8,eau:"",
+    diamForage:"",diamTubage:"",teteType:"",protectionMeca:"",hauteurCapot:"",hauteurTube:""},
   layers:[],
   samples:[],
   equipement:[],
@@ -595,20 +597,19 @@ function renderLog(){
       + '</div></div>';
   }
 
-  // méta
-  const metaFields=[["Site",h.site],["Réf. sondage",h.ref],["Date",h.date],["Méthode",h.methode],
+  // informations générales : fiche du sondage + tête d'ouvrage réunies dans une même zone
+  const metaFields=[["Client / Site",h.site],["Réf. dossier",h.refDossier],["Réf. sondage",h.ref],["Date",h.date],["Méthode",h.methode],
     ["X / Y",(h.x||h.y)?(esc(h.x)+" / "+esc(h.y)):""],["Z sol",h.z?h.z+" m NGF":""],
     ["Prof. totale",prof+" m"],["Niveau d'eau",(h.eau!==""&&h.eau!=null)?h.eau+" m":"—"]];
-  const meta=metaFields.map(([k,v])=>'<div><span class="k">'+k+'</span><span class="v">'+(esc(v)||"—")+'</span></div>').join("");
-
-  // encart capot de tête de piézomètre (affiché seulement si renseigné)
-  const capotBox=(h.capotType||h.capotHauteur)
-    ? '<div class="capot-box"><span class="tag">Capot</span>'
-      + '<span class="v">'+(esc(h.capotType)||"—")+'</span>'
-      + '<span class="sep">·</span>'
-      + '<span class="k">Niveau / TN</span><span class="v">'+(esc(h.capotHauteur)||"—")+'</span>'
-      + '</div>'
-    : '';
+  // champs tête d'ouvrage : n'apparaissent que si au moins un est renseigné
+  const teteFields=[["Type de tête",h.teteType],["Protection méca.",h.protectionMeca],
+    ["Ø ext. forage",h.diamForage?h.diamForage+" mm":""],["Ø int. tubage",h.diamTubage?h.diamTubage+" mm":""],
+    ["Hauteur capot",(h.hauteurCapot!==""&&h.hauteurCapot!=null)?h.hauteurCapot+" m":""],
+    ["Hauteur tube / TN",(h.hauteurTube!==""&&h.hauteurTube!=null)?h.hauteurTube+" m":""]];
+  const hasTeteInfo=teteFields.some(([,v])=>v);
+  const allFields=hasTeteInfo?metaFields.concat(teteFields):metaFields;
+  const meta=allFields.map(([k,v])=>'<div><span class="k">'+k+'</span><span class="v">'+(esc(v)||"—")+'</span></div>').join("");
+  const infoBox='<div class="info-box"><h3>Informations générales</h3><div class="meta">'+meta+'</div></div>';
 
   const bodyLog = state.layers.length
     ? svg+legend+equipLegend
@@ -619,8 +620,7 @@ function renderLog(){
     + '<h1 class="sheet-title"><small>Log de sondage · diagnostic pollution des sols</small>'+(esc(h.site)||"Sondage")+'</h1>'
     + '<div class="sheet-ref"><div class="big">'+(esc(h.ref)||"—")+'</div><div class="sub">'+(esc(h.date)||"")+'</div></div>'
     + '</div>'
-    + '<div class="meta">'+meta+'</div>'
-    + capotBox
+    + infoBox
     + bodyLog;
 }
 
@@ -630,7 +630,8 @@ function renderLog(){
 function renderAll(){renderLayerForm();renderSampleForm();renderEquipForm();renderLog();}
 
 /* -- champs d'en-tête -- */
-const headerMap={"f-site":"site","f-ref":"ref","f-date":"date","f-methode":"methode","f-operateur":"operateur","f-x":"x","f-y":"y","f-z":"z","f-prof":"prof","f-eau":"eau","f-capot-type":"capotType","f-capot-h":"capotHauteur"};
+const headerMap={"f-site":"site","f-ref-dossier":"refDossier","f-ref":"ref","f-date":"date","f-methode":"methode","f-operateur":"operateur","f-x":"x","f-y":"y","f-z":"z","f-prof":"prof","f-eau":"eau",
+  "f-diam-forage":"diamForage","f-diam-tubage":"diamTubage","f-tete-type":"teteType","f-protection":"protectionMeca","f-h-capot":"hauteurCapot","f-h-tube":"hauteurTube"};
 for(const[id,key] of Object.entries(headerMap)){
   const el=document.getElementById(id);
   el.addEventListener("input",()=>{state.header[key]=el.value;renderLog();});
@@ -723,9 +724,10 @@ function syncHeaderInputs(){
 /* -- jeu d'exemple -- */
 document.getElementById("btn-example").addEventListener("click",()=>{
   state={
-    header:{site:"Ancienne station-service",ref:"PZ1",date:new Date().toISOString().slice(0,10),
+    header:{site:"Client — Ancienne station-service",refDossier:"DOS-2026-014",ref:"PZ1",date:new Date().toISOString().slice(0,10),
       methode:"Tarière hélicoïdale Ø63 mm",operateur:"",x:"",y:"",z:"",prof:8,eau:"3.6",
-      capotType:"Capot fonte carré, bouche à clé",capotHauteur:"affleurant (0 m)"},
+      diamForage:63,diamTubage:50,teteType:"Bouche à clé, capot fonte carré",
+      protectionMeca:"Arceau de protection",hauteurCapot:0.15,hauteurTube:0},
     layers:[
       {de:0,a:0.4,litho:"terre_vegetale",description:"terre végétale brune, racines",pid:"0",obs:""},
       {de:0.4,a:2.1,litho:"remblais",description:"remblais sablo-graveleux, débris de béton et mâchefers",pid:"12",obs:"légère odeur HC"},
