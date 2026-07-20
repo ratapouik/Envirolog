@@ -170,9 +170,6 @@
 </head>
 <body>
 
-<!-- geological figurés (SVG pattern defs) -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="litho-defs"></defs></svg>
-
 <nav class="app-nav">
   <h1><span>Diagnostic pollution des sols</span>Log de sondage</h1>
   <div class="nav-spacer"></div>
@@ -295,29 +292,35 @@ const EQUIPEMENTS = [
 ];
 const EQUIP_MAP = Object.fromEntries(EQUIPEMENTS.map(e=>[e.code,e]));
 
-/* build <pattern> defs */
-(function buildDefs(){
-  const defs = document.getElementById("litho-defs");
-  let s="";
-  for(const l of LITHOS){
-    s += '<pattern id="pat-'+l.code+'" width="16" height="16" patternUnits="userSpaceOnUse">'
-       + '<rect width="16" height="16" fill="'+l.tint+'"/>'+l.fig+'</pattern>';
+/* figurés en vrai vectoriel tuilé (pas de <pattern> SVG) : Chromium rasterise les
+   remplissages <pattern> en basse résolution à l'impression / export PDF, même si
+   l'écran les affiche nets. En répétant le motif comme de vraies formes découpées
+   par un clip-path, le rendu reste vectoriel pur du bureau au PDF imprimé. */
+let clipId=0;
+function tiledFig(fig,tile,tint,x,y,w,h){
+  const id="clip-"+(clipId++);
+  const cols=Math.ceil(w/tile)+1, rows=Math.ceil(h/tile)+1;
+  let tiles="";
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      tiles+='<g transform="translate('+(x+c*tile)+' '+(y+r*tile)+')">'+fig+'</g>';
+    }
   }
-  for(const e of EQUIPEMENTS){
-    s += '<pattern id="pat-eq-'+e.code+'" width="16" height="16" patternUnits="userSpaceOnUse">'
-       + '<rect width="16" height="16" fill="'+e.tint+'"/>'+e.fig+'</pattern>';
-  }
-  defs.innerHTML = s;
-})();
+  return '<clipPath id="'+id+'"><rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'"/></clipPath>'
+    + '<g clip-path="url(#'+id+')">'
+    + '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="'+tint+'"/>'
+    + tiles
+    + '</g>';
+}
 
 /* small swatch (for the form + legend) */
 function swatchSVG(code,w,h){
-  return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'
-    +'<rect width="'+w+'" height="'+h+'" fill="url(#pat-'+code+')"/></svg>';
+  const l=LITHO_MAP[code];
+  return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'+tiledFig(l.fig,16,l.tint,0,0,w,h)+'</svg>';
 }
 function eqSwatchSVG(code,w,h){
-  return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'
-    +'<rect width="'+w+'" height="'+h+'" fill="url(#pat-eq-'+code+')"/></svg>';
+  const e=EQUIP_MAP[code];
+  return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'+tiledFig(e.fig,16,e.tint,0,0,w,h)+'</svg>';
 }
 
 /* ==================================================================
@@ -507,14 +510,14 @@ function renderLog(){
     if(a<=de)continue;
     const y0=y(de), y1=y(a), hh=y1-y0;
     // figuré
-    g+='<rect x="'+xLith+'" y="'+y0+'" width="'+wLith+'" height="'+hh+'" fill="url(#pat-'+ly.litho+')"/>';
+    const lith0=LITHO_MAP[ly.litho]||LITHOS[0];
+    g+=tiledFig(lith0.fig,16,lith0.tint,xLith,y0,wLith,hh);
     // limite de couche : trait net sur la lithologie, discret sur les colonnes texte
     g+='<line x1="'+xLith+'" y1="'+y1+'" x2="'+(xLith+wLith)+'" y2="'+y1+'" stroke="#2f3d45" stroke-width="0.9"/>';
     if(y1<top+logH-0.5)g+='<line x1="'+xDesc+'" y1="'+y1+'" x2="'+(xSamp+wSamp)+'" y2="'+y1+'" stroke="#d8d6ca" stroke-width="0.7"/>';
     // description, préfixée par l'intervalle de profondeur de la couche
-    const lith=LITHO_MAP[ly.litho]||LITHOS[0];
     const range=(Math.round(de*100)/100)+"–"+(Math.round(a*100)/100)+" m";
-    const descTxt=(range+" — "+lith.label+(ly.description?" — "+ly.description:""));
+    const descTxt=(range+" — "+lith0.label+(ly.description?" — "+ly.description:""));
     const lines=wrapText(descTxt,58);
     const maxLines=Math.max(1,Math.floor((hh-4)/10));
     let ty=y0+11;
@@ -545,9 +548,11 @@ function renderLog(){
       const de=parseFloat(eq.de)||0, a=parseFloat(eq.a)||0;
       if(a<=de)continue;
       const y0=y(de), y1=y(a), hh=y1-y0;
-      const cat=(EQUIP_MAP[eq.type]||EQUIPEMENTS[0]).cat;
+      const equ=EQUIP_MAP[eq.type]||EQUIPEMENTS[0];
+      const cat=equ.cat;
       const ex=cat==="tub"?xTub:xAnn, ew=cat==="tub"?wTub:wAnn;
-      g+='<rect x="'+ex+'" y="'+y0+'" width="'+ew+'" height="'+hh+'" fill="url(#pat-eq-'+eq.type+')" stroke="#2f3d45" stroke-width="0.7"/>';
+      g+=tiledFig(equ.fig,16,equ.tint,ex,y0,ew,hh);
+      g+='<rect x="'+ex+'" y="'+y0+'" width="'+ew+'" height="'+hh+'" fill="none" stroke="#2f3d45" stroke-width="0.7"/>';
     }
   }
 
