@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root{
     --paper:#f3f2ec;
@@ -178,7 +179,8 @@
   <button class="btn ghost" id="btn-example">Exemple</button>
   <button class="btn ghost" id="btn-import">Importer</button>
   <button class="btn ghost" id="btn-export">Exporter</button>
-  <button class="btn primary" id="btn-print">Imprimer / PDF</button>
+  <button class="btn primary" id="btn-download-pdf">Télécharger PDF</button>
+  <button class="btn ghost" id="btn-print">Imprimer</button>
   <input type="file" id="file-import" accept="application/json" style="display:none">
 </nav>
 
@@ -699,6 +701,18 @@ document.getElementById("add-equip").addEventListener("click",()=>{
 });
 
 /* -- barre d'outils -- */
+document.getElementById("btn-download-pdf").addEventListener("click",()=>{
+  const filename=(state.header.ref||"log")+".pdf";
+  const element=document.getElementById("sheet");
+  const opt={
+    margin:14,
+    filename:filename,
+    image:{type:"jpeg",quality:0.98},
+    html2canvas:{scale:2,useCORS:true,logging:false},
+    jsPDF:{orientation:"portrait",unit:"mm",format:"a4"}
+  };
+  html2pdf().set(opt).from(element).save();
+});
 document.getElementById("btn-print").addEventListener("click",()=>window.print());
 document.getElementById("btn-export").addEventListener("click",()=>{
   const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
