@@ -431,7 +431,8 @@ function renderLog(){
   const xSamp=xObs+wObs, wSamp=70;
   const totalW=xSamp+wSamp+M.l;
   const headBand=26;
-  const top=M.t+headBand;
+  const headGap=8;
+  const top=M.t+headBand+headGap;
   const logH=prof*scale;
   const totalH=top+logH+18;
 
