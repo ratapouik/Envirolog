@@ -183,7 +183,7 @@
     <div class="section">
       <p class="section-title"><span class="n">1</span>Fiche du sondage</p>
       <div class="grid2">
-        <div class="field wide"><label>Site / affaire</label><input id="f-site" placeholder="Ancienne station-service, Tarbes"></div>
+        <div class="field wide"><label>Site / affaire</label><input id="f-site" placeholder="Ancienne station-service"></div>
         <div class="field"><label>Référence sondage</label><input id="f-ref" placeholder="PZ1"></div>
         <div class="field"><label>Date</label><input id="f-date" type="date"></div>
         <div class="field"><label>Méthode de forage</label><input id="f-methode" placeholder="Tarière Ø63 mm"></div>
@@ -439,7 +439,7 @@ function renderLog(){
   const xSamp=xObs+wObs, wSamp=88;
   const totalW=xSamp+wSamp+M.l;
   const headBand=26;
-  const headGap=8;
+  const headGap=11;
   const top=M.t+headBand+headGap;
   const logH=prof*scale;
   const totalH=top+logH+18;
@@ -477,7 +477,7 @@ function renderLog(){
     const isFirst = d<1e-9;
     const isLast = d>prof-1e-9;
     g+='<line x1="'+(xAxis+wAxis-5)+'" y1="'+yy+'" x2="'+(xAxis+wAxis)+'" y2="'+yy+'" stroke="#2f3d45" stroke-width="0.8"/>';
-    const ty = isFirst ? yy-3 : isLast ? yy+9 : yy+3;
+    const ty = isFirst ? yy-6 : isLast ? yy+12 : yy+3;
     g+='<text x="'+(xAxis+wAxis-7)+'" y="'+ty+'" fill="#4a4d46" font-size="8.5" font-family="JetBrains Mono,monospace" text-anchor="end">'+(Math.round(d*100)/100)+'</text>';
   }
 
@@ -566,12 +566,17 @@ function renderLog(){
       + '</div></div>';
   }
 
-  // légende de l'équipement réellement utilisé
+  // légende de l'ouvrage réellement utilisé, distinguant tubage et remplissage annulaire
   const usedEquip = state.showEquipement ? [...new Set(state.equipement.map(e=>e.type))] : [];
+  const equipItems=code=>{const e=EQUIP_MAP[code];return '<div class="legend-item"><span class="sw">'+eqSwatchSVG(code,26,15)+'</span>'+esc(e.label)+'</div>';};
   let equipLegend="";
   if(usedEquip.length){
-    equipLegend='<div class="legend"><h3>Équipement</h3><div class="legend-grid">'
-      + usedEquip.map(code=>{const e=EQUIP_MAP[code];return '<div class="legend-item"><span class="sw">'+eqSwatchSVG(code,26,15)+'</span>'+esc(e.label)+'</div>';}).join("")
+    const usedTub=usedEquip.filter(c=>EQUIP_MAP[c].cat==="tub");
+    const usedAnn=usedEquip.filter(c=>EQUIP_MAP[c].cat==="ann");
+    const subhead=t=>'<div class="legend-item" style="grid-column:1/-1;font-weight:600;color:var(--ink);margin-top:2px">'+t+'</div>';
+    equipLegend='<div class="legend"><h3>Ouvrage</h3><div class="legend-grid">'
+      + (usedTub.length?subhead("Tubage")+usedTub.map(equipItems).join(""):"")
+      + (usedAnn.length?subhead("Remplissage annulaire")+usedAnn.map(equipItems).join(""):"")
       + '</div></div>';
   }
 
@@ -693,8 +698,8 @@ function syncHeaderInputs(){
 /* -- jeu d'exemple -- */
 document.getElementById("btn-example").addEventListener("click",()=>{
   state={
-    header:{site:"Ancienne station-service — Tarbes (65)",ref:"PZ1",date:new Date().toISOString().slice(0,10),
-      methode:"Tarière hélicoïdale Ø63 mm",operateur:"",x:"",y:"",z:"312.4",prof:8,eau:"3.6"},
+    header:{site:"Ancienne station-service",ref:"PZ1",date:new Date().toISOString().slice(0,10),
+      methode:"Tarière hélicoïdale Ø63 mm",operateur:"",x:"",y:"",z:"",prof:8,eau:"3.6"},
     layers:[
       {de:0,a:0.4,litho:"terre_vegetale",description:"terre végétale brune, racines",pid:"0",obs:""},
       {de:0.4,a:2.1,litho:"remblais",description:"remblais sablo-graveleux, débris de béton et mâchefers",pid:"12",obs:"légère odeur HC"},
