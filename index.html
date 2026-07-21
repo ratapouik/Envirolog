@@ -23,6 +23,8 @@
     --flag-soft:#f4e6d2;
     --equip:#55606a;
     --equip-soft:#e6e8ea;
+    --photo:#6f5b7e;
+    --photo-soft:#eae6ee;
     --sans:"Space Grotesk",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
     --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   }
@@ -147,6 +149,27 @@
   }
   .logo-clear-btn:hover{text-decoration:underline}
 
+  /* ---------- reportage photographique (formulaire) ---------- */
+  .photo-thumb{
+    width:100%;height:120px;border:1.5px dashed var(--line-strong);border-radius:6px;
+    background:var(--card);display:flex;align-items:center;justify-content:center;
+    overflow:hidden;margin-bottom:8px;
+  }
+  .photo-thumb img{width:100%;height:100%;object-fit:cover}
+  .photo-empty{font-size:10.5px;color:var(--ink-soft);text-align:center;padding:6px}
+  .photo-pick-row{display:flex;gap:8px;align-items:center}
+  .photo-pick-btn{
+    font-family:var(--sans);font-size:11.5px;font-weight:500;color:var(--photo);
+    background:var(--photo-soft);border:1px solid var(--photo);border-radius:5px;
+    padding:7px 12px;cursor:pointer;text-align:center;flex:1;
+  }
+  .photo-pick-btn:hover{filter:brightness(0.96)}
+  .photo-clear-btn{
+    font-family:var(--sans);font-size:10.5px;color:#b23b3b;background:none;border:none;
+    cursor:pointer;padding:4px 2px;
+  }
+  .photo-clear-btn:hover{text-decoration:underline}
+
   /* ---------- sheet ---------- */
   .sheet-scroll{overflow:auto}
   .sheet{
@@ -181,6 +204,24 @@
   .legend-item .sw{width:26px;height:15px;border:1px solid var(--line-strong);flex:none}
   .empty-note{color:var(--ink-soft);font-style:italic;font-size:12px;text-align:center;padding:26px 0}
 
+  /* ---------- reportage photographique (page(s) séparée(s) du document) ---------- */
+  .photo-report{
+    break-before:page;page-break-before:always;
+    margin-top:18px;padding-top:2px;
+  }
+  .photo-report-title{
+    font-size:13px;font-weight:700;color:var(--slate);margin:0 0 14px;
+    border-bottom:2px solid var(--slate);padding-bottom:8px;
+  }
+  .photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+  .photo-card{
+    margin:0;break-inside:avoid;page-break-inside:avoid;
+    border:1px solid var(--line-strong);border-radius:6px;overflow:hidden;background:var(--card);
+  }
+  .photo-frame{aspect-ratio:4/3;background:#eceae2;overflow:hidden}
+  .photo-frame img{width:100%;height:100%;object-fit:contain;display:block}
+  .photo-card figcaption{padding:6px 9px;font-size:9.5px;color:var(--ink);border-top:1px solid var(--line)}
+
   /* ---------- tablette / mobile (usage terrain) ---------- */
   @media (max-width:880px){
     .wrap{grid-template-columns:1fr}
@@ -198,6 +239,8 @@
     .logo-pick-btn{padding:9px 12px;font-size:12.5px;min-height:36px}
     .logo-thumb{width:72px;height:50px}
     input[type=checkbox]{width:18px;height:18px}
+    .photo-pick-btn{padding:10px 12px;font-size:12.5px;min-height:38px}
+    .photo-thumb{height:150px}
   }
   @media (max-width:560px){
     .app-nav{padding:10px 14px;gap:8px}
@@ -215,6 +258,7 @@
     .sheet-head{grid-template-columns:1fr;justify-items:center;gap:8px;text-align:center}
     .sheet-logos{justify-content:center}
     .sheet-ref{text-align:center}
+    .photo-grid{grid-template-columns:1fr}
   }
   @media print{
     .app-nav,.panel-input{display:none!important}
@@ -329,6 +373,13 @@
       </div>
     </div>
 
+    <div class="section">
+      <p class="section-title"><span class="n">7</span>Reportage photographique</p>
+      <div class="rows" id="photos"></div>
+      <button class="add-btn" id="add-photo">+ Ajouter une photo</button>
+      <p class="hint">Optionnel. Les photos sont regroupées sur une ou plusieurs pages à la fin du document. Sur mobile ou tablette, « Prendre / choisir une photo » propose directement l'appareil photo.</p>
+    </div>
+
   </div>
 
   <!-- ============ APERÇU ============ -->
@@ -423,7 +474,8 @@ let state = {
   samples:[],
   equipement:[],
   showEquipement:false,
-  scale:45
+  scale:45,
+  photos:[]
 };
 
 /* ==================================================================
@@ -432,6 +484,7 @@ let state = {
 const layersEl = document.getElementById("layers");
 const samplesEl = document.getElementById("samples");
 const equipEl = document.getElementById("equipement");
+const photosEl = document.getElementById("photos");
 
 function lithoOptions(sel){
   return LITHOS.map(l=>'<option value="'+l.code+'"'+(l.code===sel?' selected':'')+'>'+l.label+'</option>').join("");
@@ -513,6 +566,29 @@ function renderEquipForm(){
       + '</div>'
       + '<div class="field" style="margin-top:8px"><label>Type</label><select data-ek="type" data-i="'+i+'">'+equipOptions(eq.type)+'</select></div>';
     equipEl.appendChild(c);
+  });
+}
+
+function renderPhotoForm(){
+  photosEl.innerHTML = "";
+  state.photos.forEach((ph,i)=>{
+    const c = document.createElement("div");
+    c.className="row-card";
+    c.style.borderLeftColor="var(--photo)";
+    c.innerHTML =
+      '<div class="row-head">'
+      + '<span class="row-idx" style="background:var(--photo)">R'+(i+1)+'</span>'
+      + '<span class="row-litho">'+(ph.titre||"Photo "+(i+1))+'</span>'
+      + '<button class="del" title="Supprimer" data-del-photo="'+i+'">✕</button>'
+      + '</div>'
+      + '<div class="photo-thumb" id="photo-thumb-'+i+'">'+(ph.image?'<img src="'+ph.image+'" alt="">':'<span class="photo-empty">Aucune photo</span>')+'</div>'
+      + '<div class="photo-pick-row">'
+      +   '<label class="photo-pick-btn" for="f-photo-'+i+'">Prendre / choisir une photo</label>'
+      +   (ph.image?'<button type="button" class="photo-clear-btn" data-clear-photo="'+i+'">Retirer</button>':'')
+      + '</div>'
+      + '<input type="file" accept="image/*" capture="environment" id="f-photo-'+i+'" data-photo-file="'+i+'" style="display:none">'
+      + '<div class="field" style="margin-top:8px"><label>Titre / légende</label><input value="'+(ph.titre||"")+'" data-pk="titre" data-i="'+i+'" placeholder="Ex : Vue générale du site, regard sur PZ1..."></div>';
+    photosEl.appendChild(c);
   });
 }
 
@@ -718,6 +794,15 @@ function renderLog(){
   if(logos.principal)logosHtml+='<img src="'+logos.principal+'" alt="Logo entreprise principale">';
   if(logos.travaux)logosHtml+='<img src="'+logos.travaux+'" alt="Logo entreprise de travaux">';
 
+  // reportage photographique : page(s) séparée(s) à la fin du document
+  const validPhotos=(state.photos||[]).filter(p=>p.image);
+  let photoReport="";
+  if(validPhotos.length){
+    photoReport='<div class="photo-report"><h2 class="photo-report-title">Reportage photographique</h2><div class="photo-grid">'
+      + validPhotos.map((p,i)=>'<figure class="photo-card"><div class="photo-frame"><img src="'+p.image+'" alt=""></div><figcaption>'+esc(p.titre||("Photo "+(i+1)))+'</figcaption></figure>').join("")
+      + '</div></div>';
+  }
+
   sheet.innerHTML =
     '<div class="sheet-head">'
     + '<div class="sheet-logos">'+logosHtml+'</div>'
@@ -725,13 +810,14 @@ function renderLog(){
     + '<div class="sheet-ref"><div class="big">'+(esc(h.ref)||"—")+'</div><div class="sub">'+(esc(h.date)||"")+'</div></div>'
     + '</div>'
     + infoBox
-    + bodyLog;
+    + bodyLog
+    + photoReport;
 }
 
 /* ==================================================================
    5. Rendu global + liaisons
    ================================================================== */
-function renderAll(){renderLayerForm();renderSampleForm();renderEquipForm();renderLog();}
+function renderAll(){renderLayerForm();renderSampleForm();renderEquipForm();renderPhotoForm();renderLog();}
 
 /* -- champs d'en-tête -- */
 const headerMap={"f-site":"site","f-ref-dossier":"refDossier","f-ref":"ref","f-date":"date","f-methode":"methode","f-operateur":"operateur","f-x":"x","f-y":"y","f-z":"z","f-prof":"prof","f-eau":"eau",
@@ -822,6 +908,36 @@ document.getElementById("add-equip").addEventListener("click",()=>{
   renderAll();
 });
 
+/* -- reportage photographique : délégation -- */
+photosEl.addEventListener("input",e=>{
+  const t=e.target,i=+t.dataset.i,k=t.dataset.pk;
+  if(i>=0&&k){state.photos[i][k]=t.value;
+    // met à jour le libellé sans reconstruire la liste (sinon perte de focus en tapant)
+    if(k==="titre"){
+      const label=photosEl.children[i]&&photosEl.children[i].querySelector(".row-litho");
+      if(label)label.textContent=t.value||("Photo "+(i+1));
+    }
+    renderLog();}
+});
+photosEl.addEventListener("click",e=>{
+  const del=e.target.closest("[data-del-photo]");
+  if(del){state.photos.splice(+del.dataset.delPhoto,1);renderAll();return;}
+  const clear=e.target.closest("[data-clear-photo]");
+  if(clear){state.photos[+clear.dataset.clearPhoto].image="";renderPhotoForm();renderLog();}
+});
+photosEl.addEventListener("change",e=>{
+  const t=e.target;
+  if(!t.dataset.photoFile)return;
+  const i=+t.dataset.photoFile,f=t.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{state.photos[i].image=r.result;renderPhotoForm();renderLog();};
+  r.readAsDataURL(f);
+});
+document.getElementById("add-photo").addEventListener("click",()=>{
+  state.photos.push({titre:"",image:""});
+  renderAll();
+});
+
 /* -- barre d'outils -- */
 document.getElementById("btn-download-pdf").addEventListener("click",()=>{
   const filename=(state.header.ref||"log")+".pdf";
@@ -873,7 +989,8 @@ document.getElementById("btn-example").addEventListener("click",()=>{
       {de:2.8,a:6.5,type:"massif_filtrant"}
     ],
     showEquipement:true,
-    scale:55
+    scale:55,
+    photos:[]
   };
   syncHeaderInputs();renderAll();
 });
