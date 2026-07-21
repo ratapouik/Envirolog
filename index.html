@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root{
     --paper:#f3f2ec;
@@ -277,8 +276,7 @@
   <h1><span>Diagnostic pollution des sols</span>Log de sondage</h1>
   <div class="nav-spacer"></div>
   <button class="btn ghost" id="btn-example">Exemple</button>
-  <button class="btn primary" id="btn-download-pdf">Télécharger PDF</button>
-  <button class="btn ghost" id="btn-print">Imprimer</button>
+  <button class="btn primary" id="btn-print">Imprimer / PDF</button>
 </nav>
 
 <div class="wrap">
@@ -939,18 +937,6 @@ document.getElementById("add-photo").addEventListener("click",()=>{
 });
 
 /* -- barre d'outils -- */
-document.getElementById("btn-download-pdf").addEventListener("click",()=>{
-  const filename=(state.header.ref||"log")+".pdf";
-  const element=document.getElementById("sheet");
-  const opt={
-    margin:14,
-    filename:filename,
-    image:{type:"png",quality:1},
-    html2canvas:{scale:6,useCORS:true,logging:false,allowTaint:true},
-    jsPDF:{orientation:"portrait",unit:"mm",format:"a4"}
-  };
-  html2pdf().set(opt).from(element).save();
-});
 document.getElementById("btn-print").addEventListener("click",()=>window.print());
 
 function syncHeaderInputs(){

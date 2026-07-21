@@ -14,7 +14,7 @@ Application web mono-page pour générer des **logs (coupes) de sondage orienté
   (fonction `tiledFig`, avec découpe `clip-path`) — **pas** de `<pattern>` SVG. Chromium rasterise les
   remplissages `<pattern>` en basse résolution à l'impression / export PDF ; le tuilage manuel garde un
   rendu 100 % vectoriel, identique à l'écran et à l'impression.
-- Fonctions présentes : fiche de sondage, couches (de / à, lithologie, description, PID, indice organoleptique), échantillons, niveau d'eau, échelle réglable (px/m), impression A4, téléchargement PDF direct.
+- Fonctions présentes : fiche de sondage, logos d'en-tête (entreprise principale / entreprise de travaux), couches (de / à, lithologie, description, PID, indice organoleptique), échantillons, niveau d'eau, équipement / piézomètre, échelle réglable (px/m), reportage photographique optionnel (page(s) séparée(s), capture caméra sur mobile/tablette), impression A4 / export PDF via la boîte de dialogue d'impression du navigateur.
 - Interface pensée pour un **usage de terrain** (tablette, téléphone) autant que pour un poste de bureau : mise en page à une colonne, champs à 16px (évite le zoom automatique de Safari iOS) et cibles tactiles agrandies sous 880px de large.
 
 ## Contraintes techniques (impératives)
@@ -22,18 +22,22 @@ Application web mono-page pour générer des **logs (coupes) de sondage orienté
 - Chemins **relatifs** uniquement (`./…`), jamais absolus (`/…`).
 - **Aucun secret ni clé API** dans le code (le dépôt est public).
 - Pas de `localStorage` / `sessionStorage`, pas d'export / import JSON : aucune persistance de session,
-  le log se transmet via le PDF (impression ou téléchargement direct).
+  le log se transmet via le PDF, produit par la boîte de dialogue d'impression du navigateur
+  (« Imprimer / PDF » → Enregistrer au format PDF).
+- **Pas de génération de PDF côté JS** (type html2pdf.js/html2canvas) : ces bibliothèques rasterisent la
+  page en canvas, ce qui alourdit énormément le fichier et casse la pagination multi-page (testé et
+  abandonné — voir historique). L'impression native du navigateur produit un PDF vectoriel, léger et
+  correctement paginé ; c'est la seule voie d'export à conserver.
 - Rester **léger et sans dépendances lourdes** ; le code doit rester lisible pour un non-développeur.
 - Interface et libellés **en français**. Les données chiffrées (profondeurs, valeurs) sont en police monospace pour l'alignement.
 
 ## Conventions de travail
 - Un commit = un changement compréhensible ; **ouvrir une pull request** pour toute évolution.
 - L'appli doit rester **fonctionnelle à tout moment** (le fichier s'ouvre par simple double-clic dans un navigateur).
-- Ne **jamais casser** l'impression A4, le téléchargement PDF, ni l'affichage sur mobile / tablette.
+- Ne **jamais casser** l'impression A4 / export PDF, ni l'affichage sur mobile / tablette.
 - Toujours tester le bouton « Exemple » après une modification : il doit continuer à produire un log complet.
 
 ## Pistes / objectifs ouverts
-- Colonne optionnelle **« équipement / piézomètre »** : crépine, massif filtrant, bentonite, cimentation, tube plein.
 - Pouvoir **caler les figurés** sur une légende de bureau ou une norme précise, si un modèle est fourni.
 - **Clarifier « LNE »** (laboratoire ? norme ? référentiel interne ?) et l'intégrer si pertinent.
 - Enrichir la liste des **lithologies** au besoin (argile sableuse, tourbe, remblais différenciés, etc.).
