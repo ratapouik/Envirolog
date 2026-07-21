@@ -125,6 +125,28 @@
   .scale-row input[type=range]{flex:1;accent-color:var(--accent)}
   .scale-val{font-family:var(--mono);font-size:11px;color:var(--ink-soft);min-width:62px;text-align:right}
 
+  /* ---------- logos d'en-tête ---------- */
+  .logo-field{display:flex;align-items:center;gap:10px}
+  .logo-thumb{
+    width:64px;height:44px;border:1.5px dashed var(--line-strong);border-radius:6px;
+    background:var(--card);display:flex;align-items:center;justify-content:center;
+    overflow:hidden;flex:none;
+  }
+  .logo-thumb img{max-width:100%;max-height:100%;object-fit:contain}
+  .logo-empty{font-size:8.5px;color:var(--ink-soft);text-align:center;padding:2px;line-height:1.3}
+  .logo-actions{display:flex;flex-direction:column;gap:5px}
+  .logo-pick-btn{
+    font-family:var(--sans);font-size:11px;font-weight:500;color:var(--accent);
+    background:var(--accent-soft);border:1px solid var(--accent);border-radius:5px;
+    padding:6px 10px;cursor:pointer;text-align:center;display:block;
+  }
+  .logo-pick-btn:hover{background:#d5e6e8}
+  .logo-clear-btn{
+    font-family:var(--sans);font-size:10.5px;color:#b23b3b;background:none;border:none;
+    cursor:pointer;padding:2px 0;text-align:left;
+  }
+  .logo-clear-btn:hover{text-decoration:underline}
+
   /* ---------- sheet ---------- */
   .sheet-scroll{overflow:auto}
   .sheet{
@@ -132,9 +154,13 @@
     box-shadow:0 2px 14px rgba(0,0,0,.14);border:1px solid #ccc;
     padding:26px 30px 34px;
   }
-  .sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;border-bottom:2px solid var(--slate);padding-bottom:12px;margin-bottom:14px}
-  .sheet-title{font-size:16px;font-weight:700;letter-spacing:.01em;margin:0;color:var(--slate)}
-  .sheet-title small{display:block;font-size:10px;font-weight:500;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);margin-bottom:3px}
+  .sheet-head{
+    display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px;
+    border-bottom:2px solid var(--slate);padding-bottom:12px;margin-bottom:14px;
+  }
+  .sheet-logos{display:flex;align-items:center;gap:12px;min-height:40px}
+  .sheet-logos img{max-height:40px;max-width:130px;object-fit:contain}
+  .sheet-title{font-size:16px;font-weight:700;letter-spacing:.01em;margin:0;color:var(--slate);text-align:center}
   .sheet-ref{text-align:right;font-family:var(--mono)}
   .sheet-ref .big{font-size:19px;font-weight:700;color:var(--slate)}
   .sheet-ref .sub{font-size:10.5px;color:var(--ink-soft)}
@@ -169,6 +195,8 @@
     .del{font-size:18px;padding:5px 9px;min-width:34px;min-height:34px}
     .add-btn{padding:12px;font-size:13.5px}
     .row-card{padding:12px 12px 13px}
+    .logo-pick-btn{padding:9px 12px;font-size:12.5px;min-height:36px}
+    .logo-thumb{width:72px;height:50px}
     input[type=checkbox]{width:18px;height:18px}
   }
   @media (max-width:560px){
@@ -183,6 +211,10 @@
     .depth-pair,.obs-line{grid-template-columns:1fr}
     .scale-row{flex-wrap:wrap}
     .scale-val{text-align:left}
+    /* en-tête du document : empilé et centré plutôt qu'en 3 colonnes serrées */
+    .sheet-head{grid-template-columns:1fr;justify-items:center;gap:8px;text-align:center}
+    .sheet-logos{justify-content:center}
+    .sheet-ref{text-align:center}
   }
   @media print{
     .app-nav,.panel-input{display:none!important}
@@ -210,7 +242,36 @@
   <div class="panel-input">
 
     <div class="section">
-      <p class="section-title"><span class="n">1</span>Fiche du sondage</p>
+      <p class="section-title"><span class="n">1</span>Logos</p>
+      <div class="grid2">
+        <div class="field">
+          <label>Entreprise principale</label>
+          <div class="logo-field">
+            <div class="logo-thumb" id="logo-thumb-principal"><span class="logo-empty">Aucun logo</span></div>
+            <div class="logo-actions">
+              <label class="logo-pick-btn" for="f-logo-principal">Choisir…</label>
+              <button type="button" class="logo-clear-btn" id="clear-logo-principal" style="display:none">Retirer</button>
+            </div>
+            <input type="file" accept="image/*" id="f-logo-principal" style="display:none">
+          </div>
+        </div>
+        <div class="field">
+          <label>Entreprise de travaux</label>
+          <div class="logo-field">
+            <div class="logo-thumb" id="logo-thumb-travaux"><span class="logo-empty">Aucun logo</span></div>
+            <div class="logo-actions">
+              <label class="logo-pick-btn" for="f-logo-travaux">Choisir…</label>
+              <button type="button" class="logo-clear-btn" id="clear-logo-travaux" style="display:none">Retirer</button>
+            </div>
+            <input type="file" accept="image/*" id="f-logo-travaux" style="display:none">
+          </div>
+        </div>
+      </div>
+      <p class="hint">Les logos apparaissent en haut à gauche du document imprimé / PDF.</p>
+    </div>
+
+    <div class="section">
+      <p class="section-title"><span class="n">2</span>Fiche du sondage</p>
       <div class="grid2">
         <div class="field wide"><label>Client / Site</label><input id="f-site" placeholder="Nom du client — nom du site"></div>
         <div class="field"><label>Référence dossier</label><input id="f-ref-dossier" placeholder="ex : DOS-2026-014"></div>
@@ -227,20 +288,20 @@
     </div>
 
     <div class="section">
-      <p class="section-title"><span class="n">2</span>Couches géologiques</p>
+      <p class="section-title"><span class="n">3</span>Couches géologiques</p>
       <div class="rows" id="layers"></div>
       <button class="add-btn" id="add-layer">+ Ajouter une couche</button>
       <p class="hint">Profondeurs en mètres depuis le sol (« de » = toit, « à » = mur). Le figuré et la teinte suivent la nomenclature géologique classique.</p>
     </div>
 
     <div class="section">
-      <p class="section-title"><span class="n">3</span>Échantillons</p>
+      <p class="section-title"><span class="n">4</span>Échantillons</p>
       <div class="rows" id="samples"></div>
       <button class="add-btn" id="add-sample">+ Ajouter un échantillon</button>
     </div>
 
     <div class="section">
-      <p class="section-title"><span class="n">4</span>Équipement / piézomètre</p>
+      <p class="section-title"><span class="n">5</span>Équipement / piézomètre</p>
       <label style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:500;color:var(--ink-soft);margin-bottom:10px;cursor:pointer">
         <input type="checkbox" id="f-show-equip" style="width:auto">
         Inclure les colonnes ouvrage : tubage (tube plein, crépine) et remplissage annulaire (massif filtrant, bentonite, cimentation)
@@ -261,7 +322,7 @@
     </div>
 
     <div class="section">
-      <p class="section-title"><span class="n">5</span>Échelle du log</p>
+      <p class="section-title"><span class="n">6</span>Échelle du log</p>
       <div class="scale-row">
         <input type="range" id="f-scale" min="20" max="90" step="5" value="45">
         <span class="scale-val" id="scale-val">45 px/m</span>
@@ -357,6 +418,7 @@ function eqSwatchSVG(code,w,h){
 let state = {
   header:{site:"",refDossier:"",ref:"",date:"",methode:"",operateur:"",x:"",y:"",z:"",prof:8,eau:"",
     diamForage:"",diamTubage:"",teteType:"",protectionMeca:"",hauteurCapot:"",hauteurTube:""},
+  logos:{principal:"",travaux:""},
   layers:[],
   samples:[],
   equipement:[],
@@ -651,9 +713,15 @@ function renderLog(){
     ? svg+legend+equipLegend
     : '<div class="empty-note">Ajoutez au moins une couche pour dessiner le log.</div>';
 
+  const logos=state.logos||{};
+  let logosHtml="";
+  if(logos.principal)logosHtml+='<img src="'+logos.principal+'" alt="Logo entreprise principale">';
+  if(logos.travaux)logosHtml+='<img src="'+logos.travaux+'" alt="Logo entreprise de travaux">';
+
   sheet.innerHTML =
     '<div class="sheet-head">'
-    + '<h1 class="sheet-title"><small>Log de sondage · diagnostic pollution des sols</small>'+(esc(h.site)||"Sondage")+'</h1>'
+    + '<div class="sheet-logos">'+logosHtml+'</div>'
+    + '<h1 class="sheet-title">'+(esc(h.site)||"Sondage")+'</h1>'
     + '<div class="sheet-ref"><div class="big">'+(esc(h.ref)||"—")+'</div><div class="sub">'+(esc(h.date)||"")+'</div></div>'
     + '</div>'
     + infoBox
@@ -671,6 +739,27 @@ const headerMap={"f-site":"site","f-ref-dossier":"refDossier","f-ref":"ref","f-d
 for(const[id,key] of Object.entries(headerMap)){
   const el=document.getElementById(id);
   el.addEventListener("input",()=>{state.header[key]=el.value;renderLog();});
+}
+
+/* -- logos d'en-tête -- */
+function updateLogoPreview(key){
+  const thumb=document.getElementById("logo-thumb-"+key);
+  const clearBtn=document.getElementById("clear-logo-"+key);
+  const url=state.logos[key];
+  thumb.innerHTML=url?'<img src="'+url+'" alt="">':'<span class="logo-empty">Aucun logo</span>';
+  clearBtn.style.display=url?"":"none";
+}
+for(const key of ["principal","travaux"]){
+  document.getElementById("f-logo-"+key).addEventListener("change",e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>{state.logos[key]=r.result;updateLogoPreview(key);renderLog();};
+    r.readAsDataURL(f);
+  });
+  document.getElementById("clear-logo-"+key).addEventListener("click",()=>{
+    state.logos[key]="";document.getElementById("f-logo-"+key).value="";
+    updateLogoPreview(key);renderLog();
+  });
 }
 
 /* -- échelle -- */
@@ -753,6 +842,7 @@ function syncHeaderInputs(){
   scaleEl.value=state.scale;scaleVal.textContent=state.scale+" px/m";
   showEquipEl.checked=!!state.showEquipement;
   equipBlock.style.display=state.showEquipement?"":"none";
+  updateLogoPreview("principal");updateLogoPreview("travaux");
 }
 
 /* -- jeu d'exemple -- */
@@ -762,6 +852,7 @@ document.getElementById("btn-example").addEventListener("click",()=>{
       methode:"Tarière hélicoïdale Ø63 mm",operateur:"",x:"",y:"",z:"",prof:8,eau:"3.6",
       diamForage:63,diamTubage:50,teteType:"Bouche à clé, capot fonte carré",
       protectionMeca:"Arceau de protection",hauteurCapot:0.15,hauteurTube:0},
+    logos:state.logos,
     layers:[
       {de:0,a:0.4,litho:"terre_vegetale",description:"terre végétale brune, racines",pid:"0",obs:""},
       {de:0.4,a:2.1,litho:"remblais",description:"remblais sablo-graveleux, débris de béton et mâchefers",pid:"12",obs:"légère odeur HC"},
